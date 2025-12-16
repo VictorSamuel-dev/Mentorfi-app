@@ -1,0 +1,27 @@
+const stats = [
+  { value: "500+", label: "Active Mentors" },
+  { value: "2,500+", label: "Students Connected" },
+  { value: "100+", label: "Career Events" },
+  { value: "85%", label: "Match Success Rate" },
+];
+
+export function StatsSection() {
+  return (
+    <section className="py-16 px-6 bg-primary text-primary-foreground">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+          {stats.map((stat, index) => (
+            <div
+              key={index}
+              className="text-center"
+              data-testid={`stat-${index}`}
+            >
+              <div className="text-4xl sm:text-5xl font-bold mb-2">{stat.value}</div>
+              <div className="text-primary-foreground/80 font-medium">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
