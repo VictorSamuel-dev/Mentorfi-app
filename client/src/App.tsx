@@ -11,6 +11,13 @@ import Matches from "@/pages/Matches";
 import Messages from "@/pages/Messages";
 import Dashboard from "@/pages/Dashboard";
 import Auth from "@/pages/Auth";
+import About from "@/pages/About";
+import Pricing from "@/pages/Pricing";
+import Contact from "@/pages/Contact";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
+import Blog from "@/pages/Blog";
+import Careers from "@/pages/Careers";
 
 function Router() {
   return (
@@ -21,6 +28,13 @@ function Router() {
       <Route path="/events" component={Events} />
       <Route path="/matches" component={Matches} />
       <Route path="/messages" component={Messages} />
+      <Route path="/about" component={About} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/contact" component={Contact} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/blog" component={Blog} />
+      <Route path="/careers" component={Careers} />
       <Route component={NotFound} />
     </Switch>
   );

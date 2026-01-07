@@ -22,25 +22,25 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/events" className="hover:text-foreground">Events</Link></li>
               <li><Link href="/matches" className="hover:text-foreground">Find Mentors</Link></li>
-              <li><Link href="#" className="hover:text-foreground">Pricing</Link></li>
+              <li><Link href="/pricing" className="hover:text-foreground">Pricing</Link></li>
             </ul>
           </div>
           
           <div>
             <h4 className="font-semibold mb-4">Company</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="#" className="hover:text-foreground">About</Link></li>
-              <li><Link href="#" className="hover:text-foreground">Blog</Link></li>
-              <li><Link href="#" className="hover:text-foreground">Careers</Link></li>
+              <li><Link href="/about" className="hover:text-foreground">About</Link></li>
+              <li><Link href="/blog" className="hover:text-foreground">Blog</Link></li>
+              <li><Link href="/careers" className="hover:text-foreground">Careers</Link></li>
             </ul>
           </div>
           
           <div>
             <h4 className="font-semibold mb-4">Legal</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="#" className="hover:text-foreground">Privacy</Link></li>
-              <li><Link href="#" className="hover:text-foreground">Terms</Link></li>
-              <li><Link href="#" className="hover:text-foreground">Contact</Link></li>
+              <li><Link href="/privacy" className="hover:text-foreground">Privacy</Link></li>
+              <li><Link href="/terms" className="hover:text-foreground">Terms</Link></li>
+              <li><Link href="/contact" className="hover:text-foreground">Contact</Link></li>
             </ul>
           </div>
         </div>
