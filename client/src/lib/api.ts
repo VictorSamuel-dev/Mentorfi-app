@@ -7,7 +7,8 @@ import type {
   MatchData, 
   Connection,
   Message,
-  ConversationData 
+  ConversationData,
+  EventAttendeesResponse
 } from "@shared/schema";
 
 // Auth API
@@ -61,6 +62,11 @@ export async function rsvpToEvent(eventId: number): Promise<void> {
 
 export async function cancelRsvp(eventId: number): Promise<void> {
   await apiRequest("DELETE", `/api/events/${eventId}/rsvp`);
+}
+
+export async function getEventVisibleAttendees(eventId: number): Promise<EventAttendeesResponse> {
+  const res = await fetch(`/api/events/${eventId}/attendees-visible`, { credentials: "include" });
+  return res.json();
 }
 
 // Connections API

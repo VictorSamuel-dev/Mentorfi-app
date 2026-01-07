@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { EventCard } from "@/components/EventCard";
+import { EventDetailsDialog } from "@/components/EventDetailsDialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getEvents, rsvpToEvent, cancelRsvp } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { EventWithAttendees } from "@shared/schema";
+import type { EventWithAttendees, Event } from "@shared/schema";
 
 const industries = ["All", "Technology", "Finance", "Consulting", "Product Management"];
 
@@ -30,6 +31,8 @@ export default function Events() {
   const [industryFilter, setIndustryFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [showMyEvents, setShowMyEvents] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const { data: events = [], isLoading } = useQuery<EventWithAttendees[]>({
     queryKey: ["/api/events"],
@@ -72,7 +75,11 @@ export default function Events() {
   };
 
   const handleViewDetails = (eventId: number) => {
-    console.log("View details for event:", eventId);
+    const event = events.find((e) => e.id === eventId);
+    if (event) {
+      setSelectedEvent(event);
+      setDetailsOpen(true);
+    }
   };
 
   const filteredEvents = events.filter((event) => {
@@ -195,6 +202,13 @@ export default function Events() {
       </main>
       
       <Footer />
+
+      <EventDetailsDialog
+        event={selectedEvent}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        isAuthenticated={!!user}
+      />
     </div>
   );
 }
