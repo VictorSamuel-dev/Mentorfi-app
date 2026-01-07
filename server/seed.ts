@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { events, users } from "@shared/schema";
+import { events, users, eventRsvps, connections } from "@shared/schema";
 import { hashPassword } from "./utils/password";
 import { sql } from "drizzle-orm";
 
@@ -160,10 +160,100 @@ async function seed() {
     },
   ];
 
-  await db.insert(users).values(sampleMentors);
+  const createdMentors = await db.insert(users).values(sampleMentors).returning();
   console.log(`Created ${sampleMentors.length} sample mentors`);
 
+  // Create sample mentee users for testing connection visibility
+  const menteePassword = await hashPassword("student123");
+  const sampleMentees = [
+    {
+      email: "alex.student@university.edu",
+      password: menteePassword,
+      firstName: "Alex",
+      lastName: "Johnson",
+      role: "mentee",
+      interests: ["Product Management", "AI/ML", "Startups"],
+      targetCompanies: ["Google", "Meta", "Amazon"],
+    },
+    {
+      email: "jordan.learner@college.edu",
+      password: menteePassword,
+      firstName: "Jordan",
+      lastName: "Smith",
+      role: "mentee",
+      interests: ["Software Engineering", "System Design", "Cloud Computing"],
+      targetCompanies: ["Microsoft", "Amazon", "Google"],
+    },
+  ];
+
+  const createdMentees = await db.insert(users).values(sampleMentees).returning();
+  console.log(`Created ${sampleMentees.length} sample mentees`);
+
+  // Get the created events
+  const createdEvents = await db.select().from(events);
+  const techCareerFair = createdEvents.find(e => e.name.includes("Tech Career Fair"));
+  const googleSession = createdEvents.find(e => e.name.includes("Google Product"));
+  
+  if (techCareerFair && googleSession) {
+    // Create RSVPs: Alex and mentors attend the same events
+    const alexId = createdMentees.find(m => m.email === "alex.student@university.edu")?.id;
+    const jordanId = createdMentees.find(m => m.email === "jordan.learner@college.edu")?.id;
+    const sarahId = createdMentors.find(m => m.email === "sarah.chen@google.com")?.id;
+    const michaelId = createdMentors.find(m => m.email === "michael.rodriguez@microsoft.com")?.id;
+    const emilyId = createdMentors.find(m => m.email === "emily.wang@meta.com")?.id;
+
+    if (alexId && jordanId && sarahId && michaelId && emilyId) {
+      // All users RSVP to Tech Career Fair
+      const rsvpData = [
+        { userId: alexId, eventId: techCareerFair.id },
+        { userId: jordanId, eventId: techCareerFair.id },
+        { userId: sarahId, eventId: techCareerFair.id },
+        { userId: michaelId, eventId: techCareerFair.id },
+        { userId: emilyId, eventId: techCareerFair.id },
+        // Some also attend Google session
+        { userId: alexId, eventId: googleSession.id },
+        { userId: sarahId, eventId: googleSession.id },
+      ];
+      
+      await db.insert(eventRsvps).values(rsvpData);
+      console.log(`Created ${rsvpData.length} RSVPs`);
+
+      // Create connections with different statuses for testing:
+      // - Alex <-> Sarah: APPROVED (Alex should see Sarah in event details)
+      // - Alex <-> Michael: PENDING (Alex should NOT see Michael)
+      // - Alex <-> Emily: No connection (Alex should NOT see Emily)
+      const connectionData = [
+        {
+          fromUserId: alexId,
+          toUserId: sarahId,
+          status: "approved",
+          message: "Hi Sarah, I'd love to learn about PM at Google!",
+          eventId: techCareerFair.id,
+          approvedAt: new Date(),
+        },
+        {
+          fromUserId: alexId,
+          toUserId: michaelId,
+          status: "pending",
+          message: "Hi Michael, interested in software engineering at Microsoft!",
+          eventId: techCareerFair.id,
+        },
+      ];
+
+      await db.insert(connections).values(connectionData);
+      console.log(`Created ${connectionData.length} connections (1 approved, 1 pending)`);
+    }
+  }
+
   console.log("Database seeding complete!");
+  console.log("\nTest accounts:");
+  console.log("  Mentee: alex.student@university.edu / student123");
+  console.log("  Mentee: jordan.learner@college.edu / student123");
+  console.log("  Mentor: sarah.chen@google.com / mentor123");
+  console.log("\nTest scenario:");
+  console.log("  - Alex has APPROVED connection with Sarah -> Alex can see Sarah at events");
+  console.log("  - Alex has PENDING connection with Michael -> Alex cannot see Michael");
+  console.log("  - Alex has NO connection with Emily -> Alex cannot see Emily");
 }
 
 seed()

@@ -189,6 +189,7 @@ export default function Events() {
                   key={event.id}
                   event={{
                     ...event,
+                    type: event.type as "career_fair" | "info_session" | "workshop",
                     industry: event.industry || [],
                     isVirtual: event.isVirtual ?? false,
                   }}
