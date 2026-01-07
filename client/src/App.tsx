@@ -10,6 +10,7 @@ import Events from "@/pages/Events";
 import Matches from "@/pages/Matches";
 import Messages from "@/pages/Messages";
 import Dashboard from "@/pages/Dashboard";
+import Profile from "@/pages/Profile";
 import Auth from "@/pages/Auth";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/profile" component={Profile} />
       <Route path="/events" component={Events} />
       <Route path="/matches" component={Matches} />
       <Route path="/messages" component={Messages} />

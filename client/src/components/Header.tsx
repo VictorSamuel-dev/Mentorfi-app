@@ -138,7 +138,10 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
                       <LayoutDashboard className="mr-2 h-4 w-4" />
                       Dashboard
                     </DropdownMenuItem>
-                    <DropdownMenuItem data-testid="menu-item-profile">
+                    <DropdownMenuItem 
+                      data-testid="menu-item-profile"
+                      onClick={() => navigate("/profile")}
+                    >
                       <User className="mr-2 h-4 w-4" />
                       Profile
                     </DropdownMenuItem>
