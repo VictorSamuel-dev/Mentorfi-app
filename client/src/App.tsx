@@ -11,6 +11,8 @@ import Matches from "@/pages/Matches";
 import Messages from "@/pages/Messages";
 import Dashboard from "@/pages/Dashboard";
 import Auth from "@/pages/Auth";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
 import About from "@/pages/About";
 import Pricing from "@/pages/Pricing";
 import Contact from "@/pages/Contact";
@@ -24,6 +26,8 @@ function Router() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/auth" component={Auth} />
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/events" component={Events} />
       <Route path="/matches" component={Matches} />

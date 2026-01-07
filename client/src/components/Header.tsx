@@ -184,9 +184,14 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
                 </Sheet>
               </>
             ) : (
-              <Button asChild data-testid="button-get-started">
-                <a href="/auth">Get Started</a>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" asChild data-testid="button-sign-in">
+                  <a href="/login">Welcome back</a>
+                </Button>
+                <Button asChild data-testid="button-create-account">
+                  <a href="/signup">Create an account</a>
+                </Button>
+              </div>
             )}
           </div>
         </div>
