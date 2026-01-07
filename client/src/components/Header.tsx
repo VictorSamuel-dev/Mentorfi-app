@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { logout } from "@/lib/api";
+import logoImage from "@assets/image_1767756377828.png";
 
 interface HeaderProps {
   isAuthenticated?: boolean;
@@ -51,9 +52,12 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex h-14 items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2" data-testid="link-logo">
-            <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">M</span>
-            </div>
+            <img 
+              src={logoImage} 
+              alt="Mentorfy" 
+              className="h-8 w-8"
+              style={{ filter: 'brightness(0) saturate(100%) invert(37%) sepia(93%) saturate(1352%) hue-rotate(196deg) brightness(97%) contrast(101%)' }}
+            />
             <span className="font-semibold text-lg hidden sm:block">Mentorfy</span>
           </Link>
 
