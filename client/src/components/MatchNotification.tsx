@@ -4,6 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Sparkles, Building2 } from "lucide-react";
 import { format } from "date-fns";
+import { BadgeRow } from "@/components/UserBadge";
+import type { BadgeDisplay } from "@shared/schema";
 
 export interface MatchData {
   id: string;
@@ -15,6 +17,7 @@ export interface MatchData {
     company?: string;
     jobTitle?: string;
     profileImageUrl?: string;
+    badges?: BadgeDisplay[];
   };
   event: {
     id: number;
@@ -72,6 +75,9 @@ export function MatchNotification({
                   <Badge variant="secondary" className="text-xs">
                     {matchedUser.role === "mentor" ? "Mentor" : "Mentee"}
                   </Badge>
+                  {matchedUser.badges && matchedUser.badges.length > 0 && (
+                    <BadgeRow badges={matchedUser.badges} variant="pill" maxDisplay={2} />
+                  )}
                 </div>
                 {matchedUser.jobTitle && matchedUser.company && (
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">

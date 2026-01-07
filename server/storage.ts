@@ -405,9 +405,16 @@ export class DatabaseStorage implements IStorage {
 
         if (sharedEvent) {
           const { password, ...profile } = matchUser;
+          
+          // Get visible badges for mentor (FOUNDING_MENTOR and VERIFIED_MENTOR are always visible)
+          const allBadges = await this.getUserBadges(matchUser.id);
+          const visibleBadges = matchUser.role === "mentor" 
+            ? allBadges.filter(b => b.code === "FOUNDING_MENTOR" || b.code === "VERIFIED_MENTOR")
+            : [];
+          
           matches.push({
             id: matchUser.id.charCodeAt(0) + sharedEvent.id, // Simple unique ID
-            matchedUser: profile,
+            matchedUser: { ...profile, badges: visibleBadges },
             event: sharedEvent,
             sharedInterests,
             sharedCompany,

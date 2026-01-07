@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProfileCard } from "@/components/ProfileCard";
 import { MatchNotification } from "@/components/MatchNotification";
 import { ConnectionRequest } from "@/components/ConnectionRequest";
+import { ProfileDialog, type ProfileDialogData } from "@/components/ProfileDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +15,7 @@ import { getMatches, getMentors, getPendingConnections, requestConnection, appro
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import type { MatchData, UserProfile, Connection } from "@shared/schema";
+import type { MatchData, UserProfileWithBadges, Connection } from "@shared/schema";
 
 export default function Matches() {
   const { user, isLoading: authLoading } = useAuth();
@@ -26,11 +28,14 @@ export default function Matches() {
     enabled: !!user,
   });
 
-  const { data: mentors = [], isLoading: mentorsLoading } = useQuery<UserProfile[]>({
+  const { data: mentors = [], isLoading: mentorsLoading } = useQuery<UserProfileWithBadges[]>({
     queryKey: ["/api/mentors"],
     queryFn: getMentors,
     enabled: !!user,
   });
+  
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<ProfileDialogData | null>(null);
 
   const { data: requests = [], isLoading: requestsLoading } = useQuery<any[]>({
     queryKey: ["/api/connections/pending"],
@@ -81,7 +86,28 @@ export default function Matches() {
   };
 
   const handleViewProfile = (profileId: string) => {
-    console.log("View profile:", profileId);
+    const matchedProfile = matches.find(m => m.matchedUser.id === profileId)?.matchedUser;
+    const mentorProfile = mentors.find(m => m.id === profileId);
+    const profile = matchedProfile || mentorProfile;
+    
+    if (profile) {
+      setSelectedProfile({
+        id: profile.id || "",
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        email: null,
+        role: profile.role,
+        company: profile.company,
+        jobTitle: profile.jobTitle,
+        interests: profile.interests,
+        targetCompanies: profile.targetCompanies,
+        profileImageUrl: profile.profileImageUrl,
+        isPremium: null,
+        badges: profile.badges,
+        connectionStatus: profile.connectionStatus || "none",
+      });
+      setProfileDialogOpen(true);
+    }
   };
 
   const handleApprove = (requestId: number) => {
@@ -169,6 +195,7 @@ export default function Matches() {
                         company: match.matchedUser.company || undefined,
                         jobTitle: match.matchedUser.jobTitle || undefined,
                         profileImageUrl: match.matchedUser.profileImageUrl || undefined,
+                        badges: match.matchedUser.badges,
                       },
                     }}
                     onViewProfile={(id) => handleViewProfile(id)}
@@ -207,6 +234,7 @@ export default function Matches() {
                         profileImageUrl: mentor.profileImageUrl || undefined,
                         isVerified: mentor.isVerified ?? false,
                         connectionStatus: mentor.connectionStatus || "none",
+                        badges: mentor.badges,
                       }}
                       onConnect={() => handleConnect(mentor.id)}
                       onMessage={() => handleMessage(mentor.id)}
@@ -261,6 +289,14 @@ export default function Matches() {
       </main>
       
       <Footer />
+      
+      <ProfileDialog
+        profile={selectedProfile}
+        open={profileDialogOpen}
+        onOpenChange={setProfileDialogOpen}
+        onConnect={handleConnect}
+        onMessage={handleMessage}
+      />
     </div>
   );
 }

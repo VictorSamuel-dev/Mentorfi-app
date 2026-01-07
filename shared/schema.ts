@@ -166,7 +166,7 @@ export interface UserProfile extends Omit<User, 'password'> {
 
 export interface MatchData {
   id: number;
-  matchedUser: UserProfile;
+  matchedUser: UserProfileWithBadges;
   event: Event;
   sharedInterests: string[];
   sharedCompany?: string;
