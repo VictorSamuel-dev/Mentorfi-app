@@ -1,10 +1,10 @@
+import { useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,7 +18,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Crown } from "lucide-react";
+import { Crown, Camera, Loader2 } from "lucide-react";
 import type { UserProfileWithBadges } from "@shared/schema";
 
 const profileSchema = z.object({
@@ -36,6 +36,8 @@ export default function Profile() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const { data: profile, isLoading: profileLoading } = useQuery<UserProfileWithBadges>({
     queryKey: ["/api/users/profile", user?.id],
@@ -88,6 +90,80 @@ export default function Profile() {
     },
   });
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image under 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const response = await fetch("/api/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: file.name,
+          size: file.size,
+          contentType: file.type,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get upload URL");
+      }
+
+      const { uploadURL, objectPath } = await response.json();
+
+      const uploadResponse = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("Failed to upload image");
+      }
+
+      await updateProfile({ profileImageUrl: objectPath });
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/users/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+
+      toast({
+        title: "Image updated",
+        description: "Your profile image has been updated.",
+      });
+    } catch (error) {
+      console.error("Image upload error:", error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   const onSubmit = (data: ProfileFormData) => {
     updateMutation.mutate(data);
   };
@@ -132,10 +208,33 @@ export default function Profile() {
               <Card className="mb-6">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center gap-4 mb-6">
-                    <Avatar className="h-24 w-24">
-                      <AvatarImage src={profile?.profileImageUrl || undefined} />
-                      <AvatarFallback className="text-2xl">{getInitials()}</AvatarFallback>
-                    </Avatar>
+                    <div className="relative group">
+                      <Avatar className="h-24 w-24">
+                        <AvatarImage src={profile?.profileImageUrl || undefined} />
+                        <AvatarFallback className="text-2xl">{getInitials()}</AvatarFallback>
+                      </Avatar>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingImage}
+                        className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        data-testid="button-change-avatar"
+                      >
+                        {isUploadingImage ? (
+                          <Loader2 className="h-6 w-6 text-white animate-spin" />
+                        ) : (
+                          <Camera className="h-6 w-6 text-white" />
+                        )}
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        data-testid="input-avatar-file"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Click to change photo</p>
                     <div className="text-center">
                       <h2 className="text-xl font-semibold">
                         {profile?.firstName} {profile?.lastName}

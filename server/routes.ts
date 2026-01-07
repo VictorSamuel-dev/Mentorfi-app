@@ -5,6 +5,7 @@ import { insertEventSchema, insertConnectionSchema, insertMessageSchema } from "
 import { comparePasswords } from "./utils/password";
 import "./types";
 import { z } from "zod";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 
 // Message limit for free users
 const FREE_MESSAGE_LIMIT = 2;
@@ -115,7 +116,7 @@ export async function registerRoutes(
 
   app.patch("/api/users/profile", requireAuth, async (req, res) => {
     try {
-      const { firstName, lastName, company, jobTitle, interests, targetCompanies } = req.body;
+      const { firstName, lastName, company, jobTitle, interests, targetCompanies, profileImageUrl } = req.body;
       
       const updated = await storage.updateUser(req.session.userId!, {
         firstName,
@@ -124,6 +125,7 @@ export async function registerRoutes(
         jobTitle,
         interests,
         targetCompanies,
+        profileImageUrl,
       });
 
       if (!updated) {
@@ -629,6 +631,9 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
+
+  // Register object storage routes
+  registerObjectStorageRoutes(app);
 
   // Seed badges on server start
   const { seedBadges } = await import("./seed/seedBadges");

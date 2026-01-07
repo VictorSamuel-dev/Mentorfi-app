@@ -31,6 +31,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   jobTitle: true,
   interests: true,
   targetCompanies: true,
+  profileImageUrl: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
