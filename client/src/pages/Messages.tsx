@@ -1,155 +1,89 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
-import { MessagingInterface, type Conversation } from "@/components/MessagingInterface";
-
-// todo: remove mock functionality
-const mockUser = {
-  firstName: "Jordan",
-  lastName: "Smith",
-  email: "jordan.smith@university.edu",
-  profileImageUrl: undefined,
-};
-
-const mockConversations: Conversation[] = [
-  {
-    id: 1,
-    participant: {
-      id: 2,
-      firstName: "Sarah",
-      lastName: "Chen",
-      company: "Google",
-      role: "mentor",
-    },
-    lastMessage: "Looking forward to meeting you at the event!",
-    lastMessageTime: new Date(Date.now() - 30 * 60 * 1000),
-    unreadCount: 2,
-    messages: [
-      {
-        id: 1,
-        senderId: 2,
-        content: "Hi! I saw your profile and noticed we're both attending the Tech Career Fair.",
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      },
-      {
-        id: 2,
-        senderId: 1,
-        content: "Yes! I'm really excited to learn more about product management at Google.",
-        timestamp: new Date(Date.now() - 90 * 60 * 1000),
-      },
-      {
-        id: 3,
-        senderId: 2,
-        content: "Great! I'd be happy to share my experience. What specific areas are you curious about?",
-        timestamp: new Date(Date.now() - 60 * 60 * 1000),
-      },
-      {
-        id: 4,
-        senderId: 2,
-        content: "Looking forward to meeting you at the event!",
-        timestamp: new Date(Date.now() - 30 * 60 * 1000),
-      },
-    ],
-  },
-  {
-    id: 2,
-    participant: {
-      id: 3,
-      firstName: "Michael",
-      lastName: "Rodriguez",
-      company: "Microsoft",
-      role: "mentor",
-    },
-    lastMessage: "Sounds good, see you there!",
-    lastMessageTime: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    unreadCount: 0,
-    messages: [
-      {
-        id: 5,
-        senderId: 3,
-        content: "Welcome to Mentorfy! I'm happy to connect.",
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 6,
-        senderId: 1,
-        content: "Thank you! I noticed we're both attending the Resume Workshop.",
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
-      },
-      {
-        id: 7,
-        senderId: 3,
-        content: "Sounds good, see you there!",
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      },
-    ],
-  },
-  {
-    id: 3,
-    participant: {
-      id: 6,
-      firstName: "Lisa",
-      lastName: "Thompson",
-      company: "Goldman Sachs",
-      role: "mentor",
-    },
-    lastMessage: "Feel free to reach out with any questions about investment banking.",
-    lastMessageTime: new Date(Date.now() - 48 * 60 * 60 * 1000),
-    unreadCount: 0,
-    messages: [
-      {
-        id: 8,
-        senderId: 6,
-        content: "Feel free to reach out with any questions about investment banking.",
-        timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000),
-      },
-    ],
-  },
-];
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Send, ArrowLeft, Lock, Sparkles } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+import { getConversations, sendMessage } from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import type { ConversationData, Message } from "@shared/schema";
 
 export default function Messages() {
-  const [conversations, setConversations] = useState(mockConversations);
+  const { user, isLoading: authLoading, upgrade } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedId, setSelectedId] = useState<number | undefined>();
-  const currentUserId = 1;
+  const [messageInput, setMessageInput] = useState("");
 
-  const handleSelectConversation = (conversationId: number) => {
-    setSelectedId(conversationId);
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === conversationId ? { ...c, unreadCount: 0 } : c
-      )
-    );
+  const { data: conversations = [], isLoading } = useQuery<ConversationData[]>({
+    queryKey: ["/api/conversations"],
+    queryFn: getConversations,
+    enabled: !!user,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: ({ connectionId, content }: { connectionId: number; content: string }) =>
+      sendMessage(connectionId, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      setMessageInput("");
+    },
+    onError: (error: any) => {
+      if (error.message?.includes("limit")) {
+        toast({
+          title: "Message limit reached",
+          description: "Upgrade to continue this conversation",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Failed to send message", variant: "destructive" });
+      }
+    },
+  });
+
+  const handleUpgrade = async () => {
+    try {
+      await upgrade();
+      toast({ title: "Upgraded to Premium! You now have unlimited messaging." });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+    } catch {
+      toast({ title: "Upgrade failed", variant: "destructive" });
+    }
   };
 
-  const handleSendMessage = (conversationId: number, content: string) => {
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === conversationId
-          ? {
-              ...c,
-              messages: [
-                ...c.messages,
-                {
-                  id: Date.now(),
-                  senderId: currentUserId,
-                  content,
-                  timestamp: new Date(),
-                },
-              ],
-              lastMessage: content,
-              lastMessageTime: new Date(),
-            }
-          : c
-      )
-    );
+  const selectedConversation = conversations.find((c) => c.connectionId === selectedId);
+
+  const handleSend = () => {
+    if (messageInput.trim() && selectedId) {
+      sendMutation.mutate({ connectionId: selectedId, content: messageInput });
+    }
   };
 
-  const handleBack = () => {
-    setSelectedId(undefined);
+  const getInitials = (firstName?: string | null, lastName?: string | null) => {
+    return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "?";
   };
+
+  if (authLoading) {
+    return null;
+  }
+
+  if (!user) {
+    setLocation("/auth");
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header isAuthenticated={true} user={mockUser} notificationCount={3} />
+      <Header isAuthenticated={true} user={user} notificationCount={0} />
       
       <main className="flex-1 py-8 px-6">
         <div className="max-w-5xl mx-auto">
@@ -160,14 +94,190 @@ export default function Messages() {
             </p>
           </div>
 
-          <MessagingInterface
-            conversations={conversations}
-            currentUserId={currentUserId}
-            selectedConversationId={selectedId}
-            onSelectConversation={handleSelectConversation}
-            onSendMessage={handleSendMessage}
-            onBack={handleBack}
-          />
+          {isLoading ? (
+            <Skeleton className="h-[600px]" />
+          ) : (
+            <Card className="h-[600px] flex overflow-hidden">
+              {/* Conversation List */}
+              <div
+                className={`w-full md:w-80 border-r flex flex-col ${
+                  selectedId ? "hidden md:flex" : "flex"
+                }`}
+              >
+                <div className="p-4 border-b">
+                  <h2 className="font-semibold text-lg">Conversations</h2>
+                </div>
+                <ScrollArea className="flex-1">
+                  {conversations.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      <p>No conversations yet</p>
+                      <p className="text-sm mt-1">
+                        Connect with mentors to start messaging
+                      </p>
+                    </div>
+                  ) : (
+                    conversations.map((conversation) => (
+                      <div
+                        key={conversation.connectionId}
+                        className={`p-4 cursor-pointer hover-elevate ${
+                          selectedId === conversation.connectionId ? "bg-muted" : ""
+                        }`}
+                        onClick={() => setSelectedId(conversation.connectionId)}
+                        data-testid={`conversation-${conversation.connectionId}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={conversation.participant?.profileImageUrl || undefined} />
+                            <AvatarFallback>
+                              {getInitials(
+                                conversation.participant?.firstName,
+                                conversation.participant?.lastName
+                              )}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium truncate">
+                                {conversation.participant?.firstName}{" "}
+                                {conversation.participant?.lastName}
+                              </span>
+                              {conversation.isLocked && (
+                                <Lock className="h-3 w-3 text-muted-foreground" />
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {conversation.lastMessage || "No messages yet"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </ScrollArea>
+              </div>
+
+              {/* Message Thread */}
+              <div
+                className={`flex-1 flex flex-col ${
+                  selectedId ? "flex" : "hidden md:flex"
+                }`}
+              >
+                {selectedConversation ? (
+                  <>
+                    <div className="p-4 border-b flex items-center gap-3">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="md:hidden"
+                        onClick={() => setSelectedId(undefined)}
+                        data-testid="button-back-messages"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={selectedConversation.participant?.profileImageUrl || undefined} />
+                        <AvatarFallback>
+                          {getInitials(
+                            selectedConversation.participant?.firstName,
+                            selectedConversation.participant?.lastName
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">
+                          {selectedConversation.participant?.firstName}{" "}
+                          {selectedConversation.participant?.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedConversation.participant?.company}
+                        </p>
+                      </div>
+                    </div>
+
+                    <ScrollArea className="flex-1 p-4">
+                      <div className="space-y-4">
+                        {selectedConversation.messages.map((message: Message) => {
+                          const isOwn = message.senderId === user?.id;
+                          return (
+                            <div
+                              key={message.id}
+                              className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                            >
+                              <div
+                                className={`max-w-[75%] rounded-lg p-3 ${
+                                  isOwn
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted"
+                                }`}
+                              >
+                                <p className="text-sm">{message.content}</p>
+                                <p
+                                  className={`text-xs mt-1 ${
+                                    isOwn
+                                      ? "text-primary-foreground/70"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {formatDistanceToNow(new Date(message.createdAt!), {
+                                    addSuffix: true,
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+
+                    {/* Message Input or Upgrade Prompt */}
+                    {selectedConversation.isLocked && !user?.isPremium ? (
+                      <div className="p-4 border-t bg-muted/50">
+                        <div className="text-center">
+                          <Lock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                          <p className="font-medium mb-1">Message Limit Reached</p>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Continue this conversation and unlock event coordination.
+                          </p>
+                          <Button onClick={handleUpgrade} className="gap-2" data-testid="button-upgrade">
+                            <Sparkles className="h-4 w-4" />
+                            Upgrade to Continue
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 border-t">
+                        <div className="flex gap-2">
+                          <Input
+                            value={messageInput}
+                            onChange={(e) => setMessageInput(e.target.value)}
+                            placeholder="Type a message..."
+                            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                            data-testid="input-message"
+                          />
+                          <Button
+                            onClick={handleSend}
+                            disabled={sendMutation.isPending}
+                            data-testid="button-send-message"
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {!user?.isPremium && (
+                          <p className="text-xs text-muted-foreground mt-2 text-center">
+                            {2 - selectedConversation.messageCount} free messages remaining
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                    Select a conversation to start messaging
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
         </div>
       </main>
     </div>

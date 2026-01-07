@@ -10,11 +10,13 @@ import Events from "@/pages/Events";
 import Matches from "@/pages/Matches";
 import Messages from "@/pages/Messages";
 import Dashboard from "@/pages/Dashboard";
+import Auth from "@/pages/Auth";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/auth" component={Auth} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/events" component={Events} />
       <Route path="/matches" component={Matches} />

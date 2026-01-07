@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Building2, MessageSquare, UserPlus, CheckCircle } from "lucide-react";
 
 export interface ProfileData {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
   role: "mentor" | "mentee";
@@ -22,9 +22,9 @@ interface ProfileCardProps {
   profile: ProfileData;
   sharedInterests?: string[];
   sharedEvent?: string;
-  onConnect?: (profileId: number) => void;
-  onMessage?: (profileId: number) => void;
-  onViewProfile?: (profileId: number) => void;
+  onConnect?: (profileId: string) => void;
+  onMessage?: (profileId: string) => void;
+  onViewProfile?: (profileId: string) => void;
 }
 
 export function ProfileCard({

@@ -6,9 +6,9 @@ import { Calendar, Sparkles, Building2 } from "lucide-react";
 import { format } from "date-fns";
 
 export interface MatchData {
-  id: number;
+  id: string;
   matchedUser: {
-    id: number;
+    id: string;
     firstName: string;
     lastName: string;
     role: "mentor" | "mentee";
@@ -27,7 +27,7 @@ export interface MatchData {
 
 interface MatchNotificationProps {
   match: MatchData;
-  onViewProfile?: (userId: number) => void;
+  onViewProfile?: (userId: string) => void;
   onViewEvent?: (eventId: number) => void;
 }
 

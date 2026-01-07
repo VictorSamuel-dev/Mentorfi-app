@@ -1,155 +1,109 @@
-import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { ProfileCard, type ProfileData } from "@/components/ProfileCard";
-import { MatchNotification, type MatchData } from "@/components/MatchNotification";
-import { ConnectionRequest, type ConnectionRequestData } from "@/components/ConnectionRequest";
+import { ProfileCard } from "@/components/ProfileCard";
+import { MatchNotification } from "@/components/MatchNotification";
+import { ConnectionRequest } from "@/components/ConnectionRequest";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkles, Users, Bell } from "lucide-react";
-
-// todo: remove mock functionality
-const mockUser = {
-  firstName: "Jordan",
-  lastName: "Smith",
-  email: "jordan.smith@university.edu",
-  profileImageUrl: undefined,
-};
-
-const mockMatches: MatchData[] = [
-  {
-    id: 1,
-    matchedUser: {
-      id: 2,
-      firstName: "Sarah",
-      lastName: "Chen",
-      role: "mentor",
-      company: "Google",
-      jobTitle: "Senior Product Manager",
-    },
-    event: {
-      id: 1,
-      name: "Tech Career Fair 2024",
-      date: new Date(2024, 11, 20, 10, 0),
-    },
-    sharedInterests: ["Product Management", "AI/ML"],
-    sharedCompany: "Google",
-  },
-  {
-    id: 2,
-    matchedUser: {
-      id: 3,
-      firstName: "Michael",
-      lastName: "Rodriguez",
-      role: "mentor",
-      company: "Microsoft",
-      jobTitle: "Engineering Manager",
-    },
-    event: {
-      id: 3,
-      name: "Resume Workshop with Microsoft Recruiters",
-      date: new Date(2024, 11, 22, 11, 0),
-    },
-    sharedInterests: ["Software Engineering", "Cloud Computing"],
-  },
-];
-
-const mockProfiles: ProfileData[] = [
-  {
-    id: 4,
-    firstName: "Emily",
-    lastName: "Wang",
-    role: "mentor",
-    company: "Meta",
-    jobTitle: "Data Scientist",
-    interests: ["Data Science", "AI/ML", "Python"],
-    isVerified: true,
-    connectionStatus: "none",
-  },
-  {
-    id: 5,
-    firstName: "David",
-    lastName: "Kim",
-    role: "mentor",
-    company: "Amazon",
-    jobTitle: "Software Development Engineer",
-    interests: ["Backend Development", "System Design", "AWS"],
-    isVerified: true,
-    connectionStatus: "pending",
-  },
-  {
-    id: 6,
-    firstName: "Lisa",
-    lastName: "Thompson",
-    role: "mentor",
-    company: "Goldman Sachs",
-    jobTitle: "Investment Banking Associate",
-    interests: ["Finance", "M&A", "Valuation"],
-    isVerified: false,
-    connectionStatus: "approved",
-  },
-];
-
-const mockRequests: ConnectionRequestData[] = [
-  {
-    id: 1,
-    from: {
-      id: 7,
-      firstName: "Alex",
-      lastName: "Johnson",
-      role: "mentee",
-      company: "Stanford University",
-    },
-    message: "Hi! I saw you're attending the Tech Career Fair. I'm interested in product management and would love to learn from your experience at Google.",
-    sharedEvent: "Tech Career Fair 2024",
-    sharedInterests: ["Product Management", "AI/ML"],
-    requestedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-  },
-  {
-    id: 2,
-    from: {
-      id: 8,
-      firstName: "Casey",
-      lastName: "Brown",
-      role: "mentee",
-      company: "MIT",
-    },
-    sharedInterests: ["Software Engineering"],
-    requestedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-  },
-];
+import { useAuth } from "@/hooks/useAuth";
+import { getMatches, getMentors, getPendingConnections, requestConnection, approveConnection, declineConnection } from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import type { MatchData, UserProfile, Connection } from "@shared/schema";
 
 export default function Matches() {
-  const [profiles, setProfiles] = useState(mockProfiles);
-  const [requests, setRequests] = useState(mockRequests);
+  const { user, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
-  const handleConnect = (profileId: number) => {
-    setProfiles((prev) =>
-      prev.map((p) =>
-        p.id === profileId ? { ...p, connectionStatus: "pending" as const } : p
-      )
-    );
+  const { data: matches = [], isLoading: matchesLoading } = useQuery<MatchData[]>({
+    queryKey: ["/api/matches"],
+    queryFn: getMatches,
+    enabled: !!user,
+  });
+
+  const { data: mentors = [], isLoading: mentorsLoading } = useQuery<UserProfile[]>({
+    queryKey: ["/api/mentors"],
+    queryFn: getMentors,
+    enabled: !!user,
+  });
+
+  const { data: requests = [], isLoading: requestsLoading } = useQuery<any[]>({
+    queryKey: ["/api/connections/pending"],
+    queryFn: getPendingConnections,
+    enabled: !!user,
+  });
+
+  const connectMutation = useMutation({
+    mutationFn: (toUserId: string) => requestConnection(toUserId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/mentors"] });
+      toast({ title: "Connection request sent!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to send request", variant: "destructive" });
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (connectionId: number) => approveConnection(connectionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/connections/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      toast({ title: "Connection approved!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to approve", variant: "destructive" });
+    },
+  });
+
+  const declineMutation = useMutation({
+    mutationFn: (connectionId: number) => declineConnection(connectionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/connections/pending"] });
+      toast({ title: "Connection declined" });
+    },
+    onError: () => {
+      toast({ title: "Failed to decline", variant: "destructive" });
+    },
+  });
+
+  const handleConnect = (profileId: string) => {
+    connectMutation.mutate(profileId);
   };
 
-  const handleMessage = (profileId: number) => {
-    console.log("Open message for profile:", profileId);
+  const handleMessage = (profileId: string) => {
+    setLocation("/messages");
   };
 
-  const handleViewProfile = (profileId: number) => {
+  const handleViewProfile = (profileId: string) => {
     console.log("View profile:", profileId);
   };
 
   const handleApprove = (requestId: number) => {
-    setRequests((prev) => prev.filter((r) => r.id !== requestId));
+    approveMutation.mutate(requestId);
   };
 
   const handleDecline = (requestId: number) => {
-    setRequests((prev) => prev.filter((r) => r.id !== requestId));
+    declineMutation.mutate(requestId);
   };
+
+  if (authLoading) {
+    return null;
+  }
+
+  if (!user) {
+    setLocation("/auth");
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header isAuthenticated={true} user={mockUser} notificationCount={3} />
+      <Header isAuthenticated={true} user={user} notificationCount={requests.length} />
       
       <main className="flex-1 py-8 px-6">
         <div className="max-w-4xl mx-auto">
@@ -165,9 +119,11 @@ export default function Matches() {
               <TabsTrigger value="matches" className="gap-2" data-testid="tab-matches">
                 <Sparkles className="h-4 w-4" />
                 New Matches
-                <Badge variant="secondary" className="ml-1">
-                  {mockMatches.length}
-                </Badge>
+                {matches.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {matches.length}
+                  </Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger value="mentors" className="gap-2" data-testid="tab-mentors">
                 <Users className="h-4 w-4" />
@@ -185,7 +141,13 @@ export default function Matches() {
             </TabsList>
 
             <TabsContent value="matches" className="space-y-4">
-              {mockMatches.length === 0 ? (
+              {matchesLoading ? (
+                <div className="space-y-4">
+                  {[1, 2].map((i) => (
+                    <Skeleton key={i} className="h-48" />
+                  ))}
+                </div>
+              ) : matches.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium">No new matches</p>
@@ -194,11 +156,22 @@ export default function Matches() {
                   </p>
                 </div>
               ) : (
-                mockMatches.map((match) => (
+                matches.map((match) => (
                   <MatchNotification
                     key={match.id}
-                    match={match}
-                    onViewProfile={handleViewProfile}
+                    match={{
+                      ...match,
+                      matchedUser: {
+                        id: match.matchedUser.id || "",
+                        firstName: match.matchedUser.firstName || "",
+                        lastName: match.matchedUser.lastName || "",
+                        role: (match.matchedUser.role as "mentor" | "mentee") || "mentor",
+                        company: match.matchedUser.company || undefined,
+                        jobTitle: match.matchedUser.jobTitle || undefined,
+                        profileImageUrl: match.matchedUser.profileImageUrl || undefined,
+                      },
+                    }}
+                    onViewProfile={(id) => handleViewProfile(id)}
                     onViewEvent={(eventId) => console.log("View event:", eventId)}
                   />
                 ))
@@ -206,21 +179,52 @@ export default function Matches() {
             </TabsContent>
 
             <TabsContent value="mentors" className="space-y-4">
-              <div className="grid gap-4">
-                {profiles.map((profile) => (
-                  <ProfileCard
-                    key={profile.id}
-                    profile={profile}
-                    onConnect={handleConnect}
-                    onMessage={handleMessage}
-                    onViewProfile={handleViewProfile}
-                  />
-                ))}
-              </div>
+              {mentorsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-40" />
+                  ))}
+                </div>
+              ) : mentors.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">No mentors available</p>
+                  <p className="text-sm">Check back later for new mentors</p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {mentors.map((mentor) => (
+                    <ProfileCard
+                      key={mentor.id}
+                      profile={{
+                        id: mentor.id || "",
+                        firstName: mentor.firstName || "",
+                        lastName: mentor.lastName || "",
+                        role: (mentor.role as "mentor" | "mentee") || "mentor",
+                        company: mentor.company || undefined,
+                        jobTitle: mentor.jobTitle || undefined,
+                        interests: mentor.interests || [],
+                        profileImageUrl: mentor.profileImageUrl || undefined,
+                        isVerified: mentor.isVerified ?? false,
+                        connectionStatus: mentor.connectionStatus || "none",
+                      }}
+                      onConnect={() => handleConnect(mentor.id)}
+                      onMessage={() => handleMessage(mentor.id)}
+                      onViewProfile={() => handleViewProfile(mentor.id)}
+                    />
+                  ))}
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="requests" className="space-y-4">
-              {requests.length === 0 ? (
+              {requestsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2].map((i) => (
+                    <Skeleton key={i} className="h-36" />
+                  ))}
+                </div>
+              ) : requests.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium">No pending requests</p>
@@ -230,10 +234,24 @@ export default function Matches() {
                 requests.map((request) => (
                   <ConnectionRequest
                     key={request.id}
-                    request={request}
+                    request={{
+                      id: request.id,
+                      from: {
+                        id: request.from?.id || "",
+                        firstName: request.from?.firstName || "",
+                        lastName: request.from?.lastName || "",
+                        role: (request.from?.role as "mentor" | "mentee") || "mentee",
+                        company: request.from?.company,
+                        profileImageUrl: request.from?.profileImageUrl,
+                      },
+                      message: request.message,
+                      sharedEvent: request.event?.name,
+                      sharedInterests: [],
+                      requestedAt: new Date(request.createdAt),
+                    }}
                     onApprove={handleApprove}
                     onDecline={handleDecline}
-                    onViewProfile={handleViewProfile}
+                    onViewProfile={(id) => handleViewProfile(id)}
                   />
                 ))
               )}

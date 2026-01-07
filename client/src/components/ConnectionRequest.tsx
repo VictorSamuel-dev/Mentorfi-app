@@ -8,7 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 export interface ConnectionRequestData {
   id: number;
   from: {
-    id: number;
+    id: string;
     firstName: string;
     lastName: string;
     role: "mentor" | "mentee";
@@ -25,7 +25,7 @@ interface ConnectionRequestProps {
   request: ConnectionRequestData;
   onApprove?: (requestId: number) => void;
   onDecline?: (requestId: number) => void;
-  onViewProfile?: (userId: number) => void;
+  onViewProfile?: (userId: string) => void;
 }
 
 export function ConnectionRequest({

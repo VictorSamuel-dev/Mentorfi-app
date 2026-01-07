@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { EventCard, type EventData } from "@/components/EventCard";
+import { EventCard } from "@/components/EventCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -13,114 +15,60 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, Filter, Calendar } from "lucide-react";
-
-// todo: remove mock functionality
-const mockEvents: EventData[] = [
-  {
-    id: 1,
-    name: "Tech Career Fair 2024",
-    date: new Date(2024, 11, 20, 10, 0),
-    location: "San Francisco Convention Center",
-    isVirtual: false,
-    type: "career_fair",
-    company: "Multiple Companies",
-    industry: ["Technology", "Software", "AI/ML"],
-    attendeeCount: 245,
-    isAttending: true,
-  },
-  {
-    id: 2,
-    name: "Google Product Management Info Session",
-    date: new Date(2024, 11, 18, 14, 0),
-    location: "Virtual",
-    isVirtual: true,
-    type: "info_session",
-    company: "Google",
-    industry: ["Technology", "Product Management"],
-    attendeeCount: 89,
-    isAttending: false,
-  },
-  {
-    id: 3,
-    name: "Resume Workshop with Microsoft Recruiters",
-    date: new Date(2024, 11, 22, 11, 0),
-    location: "Stanford University",
-    isVirtual: false,
-    type: "workshop",
-    company: "Microsoft",
-    industry: ["Technology", "Career Development"],
-    attendeeCount: 56,
-    isAttending: false,
-  },
-  {
-    id: 4,
-    name: "Finance Industry Networking Night",
-    date: new Date(2024, 11, 25, 18, 0),
-    location: "New York City",
-    isVirtual: false,
-    type: "career_fair",
-    company: "Goldman Sachs, JP Morgan, Morgan Stanley",
-    industry: ["Finance", "Investment Banking"],
-    attendeeCount: 178,
-    isAttending: false,
-  },
-  {
-    id: 5,
-    name: "Amazon Leadership Principles Workshop",
-    date: new Date(2024, 11, 28, 13, 0),
-    location: "Virtual",
-    isVirtual: true,
-    type: "workshop",
-    company: "Amazon",
-    industry: ["Technology", "Leadership"],
-    attendeeCount: 124,
-    isAttending: true,
-  },
-  {
-    id: 6,
-    name: "Consulting Case Interview Prep",
-    date: new Date(2025, 0, 5, 10, 0),
-    location: "Harvard Business School",
-    isVirtual: false,
-    type: "workshop",
-    company: "McKinsey, BCG, Bain",
-    industry: ["Consulting", "Strategy"],
-    attendeeCount: 67,
-    isAttending: false,
-  },
-];
-
-const mockUser = {
-  firstName: "Jordan",
-  lastName: "Smith",
-  email: "jordan.smith@university.edu",
-  profileImageUrl: undefined,
-};
+import { useAuth } from "@/hooks/useAuth";
+import { getEvents, rsvpToEvent, cancelRsvp } from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { EventWithAttendees } from "@shared/schema";
 
 const industries = ["All", "Technology", "Finance", "Consulting", "Product Management"];
-const eventTypes = ["All", "career_fair", "info_session", "workshop"];
 
 export default function Events() {
-  const [events, setEvents] = useState(mockEvents);
+  const { user, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [industryFilter, setIndustryFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [showMyEvents, setShowMyEvents] = useState(false);
 
+  const { data: events = [], isLoading } = useQuery<EventWithAttendees[]>({
+    queryKey: ["/api/events"],
+    queryFn: getEvents,
+  });
+
+  const rsvpMutation = useMutation({
+    mutationFn: (eventId: number) => rsvpToEvent(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      toast({ title: "RSVP confirmed!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to RSVP", variant: "destructive" });
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (eventId: number) => cancelRsvp(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      toast({ title: "RSVP cancelled" });
+    },
+    onError: () => {
+      toast({ title: "Failed to cancel RSVP", variant: "destructive" });
+    },
+  });
+
   const handleRSVP = (eventId: number) => {
-    setEvents((prev) =>
-      prev.map((e) =>
-        e.id === eventId
-          ? {
-              ...e,
-              isAttending: !e.isAttending,
-              attendeeCount: e.isAttending
-                ? e.attendeeCount - 1
-                : e.attendeeCount + 1,
-            }
-          : e
-      )
-    );
+    const event = events.find((e) => e.id === eventId);
+    if (!user) {
+      toast({ title: "Please log in to RSVP", variant: "destructive" });
+      return;
+    }
+    if (event?.isAttending) {
+      cancelMutation.mutate(eventId);
+    } else {
+      rsvpMutation.mutate(eventId);
+    }
   };
 
   const handleViewDetails = (eventId: number) => {
@@ -133,7 +81,7 @@ export default function Events() {
       .includes(searchQuery.toLowerCase());
     const matchesIndustry =
       industryFilter === "All" ||
-      event.industry.some((i) =>
+      (event.industry || []).some((i) =>
         i.toLowerCase().includes(industryFilter.toLowerCase())
       );
     const matchesType = typeFilter === "All" || event.type === typeFilter;
@@ -143,9 +91,13 @@ export default function Events() {
 
   const myEventsCount = events.filter((e) => e.isAttending).length;
 
+  if (authLoading) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header isAuthenticated={true} user={mockUser} notificationCount={3} />
+      <Header isAuthenticated={!!user} user={user} notificationCount={0} />
       
       <main className="flex-1 py-8 px-6">
         <div className="max-w-7xl mx-auto">
@@ -156,20 +108,22 @@ export default function Events() {
                 Find events and connect with mentors who share your interests
               </p>
             </div>
-            <Button
-              variant={showMyEvents ? "default" : "outline"}
-              className="gap-2"
-              onClick={() => setShowMyEvents(!showMyEvents)}
-              data-testid="button-my-events"
-            >
-              <Calendar className="h-4 w-4" />
-              My Events
-              {myEventsCount > 0 && (
-                <Badge variant="secondary" className="ml-1">
-                  {myEventsCount}
-                </Badge>
-              )}
-            </Button>
+            {user && (
+              <Button
+                variant={showMyEvents ? "default" : "outline"}
+                className="gap-2"
+                onClick={() => setShowMyEvents(!showMyEvents)}
+                data-testid="button-my-events"
+              >
+                <Calendar className="h-4 w-4" />
+                My Events
+                {myEventsCount > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {myEventsCount}
+                  </Badge>
+                )}
+              </Button>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -209,7 +163,13 @@ export default function Events() {
             </Select>
           </div>
 
-          {filteredEvents.length === 0 ? (
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-80" />
+              ))}
+            </div>
+          ) : filteredEvents.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">No events found</p>
@@ -220,7 +180,11 @@ export default function Events() {
               {filteredEvents.map((event) => (
                 <EventCard
                   key={event.id}
-                  event={event}
+                  event={{
+                    ...event,
+                    industry: event.industry || [],
+                    isVirtual: event.isVirtual ?? false,
+                  }}
                   onRSVP={handleRSVP}
                   onViewDetails={handleViewDetails}
                 />
