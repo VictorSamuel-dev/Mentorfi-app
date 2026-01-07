@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, MessageSquare, Users, Bell, Menu, LogOut, User, Settings } from "lucide-react";
+import { Calendar, MessageSquare, Users, Bell, Menu, LogOut, User, Settings, LayoutDashboard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
@@ -27,7 +27,7 @@ interface HeaderProps {
 }
 
 export function Header({ isAuthenticated = false, user, notificationCount = 0 }: HeaderProps) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navItems = [
@@ -84,6 +84,7 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
                   size="icon"
                   className="relative"
                   data-testid="button-notifications"
+                  onClick={() => navigate("/matches")}
                 >
                   <Bell className="h-5 w-5" />
                   {notificationCount > 0 && (
@@ -123,6 +124,13 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
                       </div>
                     </div>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      data-testid="menu-item-dashboard"
+                      onClick={() => navigate("/dashboard")}
+                    >
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </DropdownMenuItem>
                     <DropdownMenuItem data-testid="menu-item-profile">
                       <User className="mr-2 h-4 w-4" />
                       Profile
