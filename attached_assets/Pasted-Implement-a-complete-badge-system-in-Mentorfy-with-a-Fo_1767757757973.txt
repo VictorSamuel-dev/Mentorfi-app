@@ -1,0 +1,64 @@
+Implement a complete badge system in Mentorfy with a “Founding Mentor” status and UI badges.
+
+TECH CONTEXT:
+- This repo is a full-stack TypeScript app with client/ and server/ folders.
+- There is already a PostgreSQL database connected.
+- Current pages: Landing, Dashboard, Events, Matches, Messages.
+- Mentors approve mentees via a connection request flow (“approved connection” exists).
+
+GOALS:
+1) Database + types
+- Create tables:
+  - badges (id, code, name, description, tier, textColor, bgColor, borderColor, iconSvg, createdAt)
+  - user_badges (userId, badgeId, awardedAt, revokedAt nullable, metadata JSONB)
+- Add a boolean or enum on users to represent role: mentor|mentee|admin (if not already).
+- Seed 3 badges:
+  - FOUNDING_MENTOR (tier: special, gold styling)
+  - VERIFIED_MENTOR (tier: trust, blue styling)
+  - EARLY_SUPPORTER (tier: community, slate styling)
+- Add a migration or server-side init script to seed on boot if missing.
+
+2) Awarding logic
+- Add an admin-only endpoint to award/revoke badges:
+  - POST /api/badges/award { userId, badgeCode }
+  - POST /api/badges/revoke { userId, badgeCode }
+- Add endpoint to fetch badges for a user:
+  - GET /api/users/:id/badges
+- Add endpoint that returns “public badges view” based on relationship:
+  - GET /api/users/:id/public-badges?viewerId=...
+  Rules:
+    - Mentors: show FOUNDING_MENTOR and VERIFIED_MENTOR to everyone.
+    - For attendance/identity features: only show mentor identity to mentees after connection is approved.
+    - For mentees: only show their badges to mentors after connection approval.
+  Implement helper: canViewIdentity(viewerId, targetUserId) based on approved connection.
+
+3) Frontend UI components
+- Create reusable Badge component:
+  - props: variant (pill|compact|icon), badge data
+  - supports dark mode and light mode
+- Add a BadgeRow component for profile pages and mentor cards.
+- Update UI:
+  - Mentor profile card: show Founding Mentor pill (variant A) near name if they have badge.
+  - Attendees list in Event Details:
+    - before approval: show “X attending” but no identities.
+    - after approval with a mentor: show mentor attendee identity + compact tag badge.
+  - Messages thread header: show icon-only badge on mentor avatar if Founding Mentor.
+
+4) Assets
+- Store SVG badge variants in client/src/assets/badges or as inline strings inside badges seed.
+- Use the provided Founding Mentor SVGs:
+  - Primary gold pill, light pill, compact tag, icon-only.
+- Ensure scaling looks clean at 12–16px text sizes.
+
+5) QA checklist (make sure these work)
+- A mentor with FOUNDING_MENTOR badge sees it on their mentor card + profile.
+- A mentee sees only attendee count until connection is approved.
+- Once mentor approves mentee connection, that mentee can see the mentor’s identity in attendee list + badge.
+- Badge endpoints return stable JSON and don’t crash if user has no badges.
+
+Deliverables:
+- Migrations/seeding code
+- API routes with validation
+- Frontend components + integration
+- Update any types/shared models
+- Keep code clean, typed, and consistent with the existing repo structure.

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -112,6 +112,47 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 
+// Badges table - badge definitions
+export const badges = pgTable("badges", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  tier: text("tier").notNull().default("community"), // "special", "trust", "community"
+  textColor: text("text_color").notNull().default("#FFFFFF"),
+  bgColor: text("bg_color").notNull().default("#0B1220"),
+  borderColor: text("border_color").notNull().default("#2563EB"),
+  iconSvg: text("icon_svg"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertBadgeSchema = createInsertSchema(badges).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+export type Badge = typeof badges.$inferSelect;
+
+// User badges - awarded badges to users
+export const userBadges = pgTable("user_badges", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  badgeId: integer("badge_id").notNull().references(() => badges.id),
+  awardedAt: timestamp("awarded_at").defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+  metadata: jsonb("metadata"),
+});
+
+export const insertUserBadgeSchema = createInsertSchema(userBadges).omit({
+  id: true,
+  awardedAt: true,
+  revokedAt: true,
+});
+
+export type InsertUserBadge = z.infer<typeof insertUserBadgeSchema>;
+export type UserBadge = typeof userBadges.$inferSelect;
+
 // Extended types for frontend use
 export interface EventWithAttendees extends Event {
   attendeeCount: number;
@@ -149,6 +190,24 @@ export interface VisibleAttendee {
   title: string | null;
   company: string | null;
   connectionStatus: "approved";
+  badges?: Badge[];
+}
+
+// Badge display data for frontend
+export interface BadgeDisplay {
+  id: number;
+  code: string;
+  name: string;
+  tier: string;
+  textColor: string;
+  bgColor: string;
+  borderColor: string;
+  iconSvg?: string | null;
+}
+
+// User with badges for profile display
+export interface UserProfileWithBadges extends UserProfile {
+  badges?: BadgeDisplay[];
 }
 
 export interface EventAttendeesResponse {
