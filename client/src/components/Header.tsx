@@ -13,6 +13,7 @@ import { Calendar, MessageSquare, Users, Bell, Menu, LogOut, User, Settings } fr
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { logout } from "@/lib/api";
 
 interface HeaderProps {
   isAuthenticated?: boolean;
@@ -134,7 +135,10 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
                     <DropdownMenuItem
                       className="text-destructive"
                       data-testid="menu-item-logout"
-                      onClick={() => (window.location.href = "/api/logout")}
+                      onClick={async () => {
+                        await logout();
+                        window.location.href = "/";
+                      }}
                     >
                       <LogOut className="mr-2 h-4 w-4" />
                       Log out
@@ -173,7 +177,7 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
               </>
             ) : (
               <Button asChild data-testid="button-get-started">
-                <a href="/api/login">Get Started</a>
+                <a href="/auth">Get Started</a>
               </Button>
             )}
           </div>

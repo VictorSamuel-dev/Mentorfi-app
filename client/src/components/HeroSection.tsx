@@ -27,7 +27,7 @@ export function HeroSection() {
             asChild
             data-testid="button-hero-get-started"
           >
-            <a href="/api/login">
+            <a href="/auth">
               Get Started
               <ArrowRight className="h-4 w-4" />
             </a>
