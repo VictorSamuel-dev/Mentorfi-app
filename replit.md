@@ -48,6 +48,15 @@ Preferred communication style: Simple, everyday language.
 - Event-based matching: users matched based on shared event RSVPs and interests
 - Premium upgrade unlocks unlimited messaging
 
+### Badge System
+- **Badge Types**: FOUNDING_MENTOR (gold, special tier), VERIFIED_MENTOR (blue, trust tier), EARLY_SUPPORTER (slate, community tier)
+- **Visibility Rules**: 
+  - Mentor badges (FOUNDING_MENTOR, VERIFIED_MENTOR) are always visible to everyone
+  - Other badges only visible to users with approved connections
+- **Admin Controls**: POST /api/badges/award and POST /api/badges/revoke for admin-only badge management
+- **UI Components**: UserBadge (pill/compact/icon variants), BadgeRow for multiple badges
+- **Integration Points**: ProfileCard, EventDetailsDialog attendee cards, mentor browsing
+
 ## External Dependencies
 
 ### Database
