@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, ArrowLeft } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { UserBadge } from "@/components/UserBadge";
+import type { BadgeDisplay } from "@shared/schema";
 
 export interface Message {
   id: number;
@@ -24,6 +26,7 @@ export interface Conversation {
     profileImageUrl?: string;
     company?: string;
     role: "mentor" | "mentee";
+    badges?: BadgeDisplay[];
   };
   lastMessage?: string;
   lastMessageTime?: Date;
@@ -141,17 +144,28 @@ export function MessagingInterface({
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <Avatar className="h-10 w-10">
-                <AvatarImage
-                  src={selectedConversation.participant.profileImageUrl}
-                />
-                <AvatarFallback>
-                  {getInitials(
-                    selectedConversation.participant.firstName,
-                    selectedConversation.participant.lastName
-                  )}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage
+                    src={selectedConversation.participant.profileImageUrl}
+                  />
+                  <AvatarFallback>
+                    {getInitials(
+                      selectedConversation.participant.firstName,
+                      selectedConversation.participant.lastName
+                    )}
+                  </AvatarFallback>
+                </Avatar>
+                {selectedConversation.participant.badges && 
+                 selectedConversation.participant.badges.length > 0 && (
+                  <div className="absolute -bottom-1 -right-1">
+                    <UserBadge 
+                      badge={selectedConversation.participant.badges[0]} 
+                      variant="icon" 
+                    />
+                  </div>
+                )}
+              </div>
               <div>
                 <p className="font-medium">
                   {selectedConversation.participant.firstName}{" "}

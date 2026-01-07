@@ -631,7 +631,8 @@ export async function registerRoutes(
   });
 
   // Seed badges on server start
-  await storage.seedBadges();
+  const { seedBadges } = await import("./seed/seedBadges");
+  await seedBadges();
 
   return httpServer;
 }

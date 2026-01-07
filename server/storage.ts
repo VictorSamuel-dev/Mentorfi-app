@@ -81,7 +81,6 @@ export interface IStorage {
   revokeBadge(userId: string, badgeId: number): Promise<void>;
   hasApprovedConnection(userId1: string, userId2: string): Promise<boolean>;
   getUserProfileWithBadges(id: string, viewerId?: string): Promise<UserProfileWithBadges | undefined>;
-  seedBadges(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -571,49 +570,6 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async seedBadges(): Promise<void> {
-    const existingBadges = await this.getBadges();
-    if (existingBadges.length > 0) return;
-
-    const badgesToSeed: InsertBadge[] = [
-      {
-        code: "FOUNDING_MENTOR",
-        name: "Founding Mentor",
-        description: "One of the first mentors to join Mentorfy",
-        tier: "special",
-        textColor: "#FBBF24",
-        bgColor: "#0B1220",
-        borderColor: "#FBBF24",
-        iconSvg: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 1L10 5.5L15 6L11.5 9.5L12.5 14.5L8 12L3.5 14.5L4.5 9.5L1 6L6 5.5L8 1Z" fill="#FBBF24"/></svg>`,
-      },
-      {
-        code: "VERIFIED_MENTOR",
-        name: "Verified Mentor",
-        description: "Identity and employment verified",
-        tier: "trust",
-        textColor: "#3B82F6",
-        bgColor: "#0B1220",
-        borderColor: "#3B82F6",
-        iconSvg: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 0L10 3L13.5 2L12.5 5.5L16 7L12.5 8.5L13.5 12L10 11L8 14L6 11L2.5 12L3.5 8.5L0 7L3.5 5.5L2.5 2L6 3L8 0Z" fill="#3B82F6"/><path d="M6 8L7.5 9.5L10 6.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-      },
-      {
-        code: "EARLY_SUPPORTER",
-        name: "Early Supporter",
-        description: "Joined during Mentorfy's early days",
-        tier: "community",
-        textColor: "#64748B",
-        bgColor: "#0B1220",
-        borderColor: "#64748B",
-        iconSvg: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2C4.69 2 2 4.69 2 8C2 11.31 4.69 14 8 14C11.31 14 14 11.31 14 8C14 4.69 11.31 2 8 2ZM8 4L9.5 7H12.5L10 9L11 12L8 10L5 12L6 9L3.5 7H6.5L8 4Z" fill="#64748B"/></svg>`,
-      },
-    ];
-
-    for (const badge of badgesToSeed) {
-      await this.createBadge(badge);
-    }
-    
-    console.log("Seeded badges:", badgesToSeed.map(b => b.code).join(", "));
-  }
 }
 
 export const storage = new DatabaseStorage();
