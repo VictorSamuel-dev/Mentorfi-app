@@ -20,6 +20,8 @@ import {
   type UserProfile,
   type MatchData,
   type ConversationData,
+  type EventAttendeesResponse,
+  type VisibleAttendee,
 } from "@shared/schema";
 import { hashPassword, comparePasswords } from "./utils/password";
 
@@ -43,6 +45,7 @@ export interface IStorage {
   deleteRsvp(userId: string, eventId: number): Promise<void>;
   getUserRsvps(userId: string): Promise<EventRsvp[]>;
   getEventAttendees(eventId: number): Promise<User[]>;
+  getEventVisibleAttendees(eventId: number, viewerId: string): Promise<EventAttendeesResponse>;
   
   // Connection operations
   createConnection(connection: InsertConnection): Promise<Connection>;
@@ -174,6 +177,72 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(users)
       .where(inArray(users.id, rsvps.map((r) => r.userId)));
+  }
+
+  async getEventVisibleAttendees(eventId: number, viewerId: string): Promise<EventAttendeesResponse> {
+    const rsvps = await db
+      .select()
+      .from(eventRsvps)
+      .where(eq(eventRsvps.eventId, eventId));
+    
+    const totalAttending = rsvps.length;
+    
+    if (totalAttending === 0) {
+      return { totalAttending: 0, visibleAttendees: [] };
+    }
+
+    const attendeeIds = rsvps.map((r) => r.userId).filter((id) => id !== viewerId);
+    
+    if (attendeeIds.length === 0) {
+      return { totalAttending, visibleAttendees: [] };
+    }
+
+    const approvedConnections = await db
+      .select()
+      .from(connections)
+      .where(
+        and(
+          eq(connections.status, "approved"),
+          or(
+            and(
+              eq(connections.fromUserId, viewerId),
+              inArray(connections.toUserId, attendeeIds)
+            ),
+            and(
+              eq(connections.toUserId, viewerId),
+              inArray(connections.fromUserId, attendeeIds)
+            )
+          )
+        )
+      );
+
+    const connectedUserIds = new Set(
+      approvedConnections.map((conn) =>
+        conn.fromUserId === viewerId ? conn.toUserId : conn.fromUserId
+      )
+    );
+
+    const visibleUserIds = attendeeIds.filter((id) => connectedUserIds.has(id));
+
+    if (visibleUserIds.length === 0) {
+      return { totalAttending, visibleAttendees: [] };
+    }
+
+    const visibleUsers = await db
+      .select()
+      .from(users)
+      .where(inArray(users.id, visibleUserIds));
+
+    const visibleAttendees: VisibleAttendee[] = visibleUsers.map((user) => ({
+      id: user.id,
+      name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User",
+      avatarUrl: user.profileImageUrl,
+      title: user.jobTitle,
+      company: user.company,
+      connectionStatus: "approved" as const,
+    }));
+
+    return { totalAttending, visibleAttendees };
   }
 
   // Connection operations

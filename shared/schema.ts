@@ -140,3 +140,18 @@ export interface ConversationData {
   isLocked: boolean;
   messageCount: number;
 }
+
+// Visible attendee with connection status
+export interface VisibleAttendee {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  title: string | null;
+  company: string | null;
+  connectionStatus: "approved";
+}
+
+export interface EventAttendeesResponse {
+  totalAttending: number;
+  visibleAttendees: VisibleAttendee[];
+}
