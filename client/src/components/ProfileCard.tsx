@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Building2, MessageSquare, UserPlus, CheckCircle } from "lucide-react";
+import { BadgeRow } from "@/components/UserBadge";
+import type { BadgeDisplay } from "@shared/schema";
 
 export interface ProfileData {
   id: string;
@@ -16,6 +18,7 @@ export interface ProfileData {
   profileImageUrl?: string;
   isVerified?: boolean;
   connectionStatus?: "none" | "pending" | "approved";
+  badges?: BadgeDisplay[];
 }
 
 interface ProfileCardProps {
@@ -59,6 +62,9 @@ export function ProfileCard({
               <Badge variant="secondary" className="text-xs">
                 {profile.role === "mentor" ? "Mentor" : "Mentee"}
               </Badge>
+              {profile.badges && profile.badges.length > 0 && (
+                <BadgeRow badges={profile.badges} variant="pill" maxDisplay={2} />
+              )}
             </div>
 
             {profile.role === "mentor" && profile.jobTitle && profile.company && (

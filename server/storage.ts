@@ -70,7 +70,7 @@ export interface IStorage {
   
   // Matching operations
   getMatchesForUser(userId: string): Promise<MatchData[]>;
-  getMentorsForBrowsing(userId: string): Promise<UserProfile[]>;
+  getMentorsForBrowsing(userId: string): Promise<UserProfileWithBadges[]>;
   
   // Badge operations
   getBadges(): Promise<Badge[]>;
@@ -252,14 +252,20 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(inArray(users.id, visibleUserIds));
 
-    const visibleAttendees: VisibleAttendee[] = visibleUsers.map((user) => ({
-      id: user.id,
-      name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User",
-      avatarUrl: user.profileImageUrl,
-      title: user.jobTitle,
-      company: user.company,
-      connectionStatus: "approved" as const,
-    }));
+    const visibleAttendees: VisibleAttendee[] = await Promise.all(
+      visibleUsers.map(async (user) => {
+        const userBadgesList = await this.getUserBadges(user.id);
+        return {
+          id: user.id,
+          name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User",
+          avatarUrl: user.profileImageUrl,
+          title: user.jobTitle,
+          company: user.company,
+          connectionStatus: "approved" as const,
+          badges: userBadgesList,
+        };
+      })
+    );
 
     return { totalAttending, visibleAttendees };
   }
@@ -414,7 +420,7 @@ export class DatabaseStorage implements IStorage {
     return matches;
   }
 
-  async getMentorsForBrowsing(userId: string): Promise<UserProfile[]> {
+  async getMentorsForBrowsing(userId: string): Promise<UserProfileWithBadges[]> {
     const user = await this.getUser(userId);
     if (!user) return [];
 
@@ -423,7 +429,7 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(and(eq(users.role, "mentor"), sql`${users.id} != ${userId}`));
 
-    const profiles: UserProfile[] = [];
+    const profiles: UserProfileWithBadges[] = [];
 
     for (const mentor of mentors) {
       const { password, ...profile } = mentor;
@@ -436,9 +442,18 @@ export class DatabaseStorage implements IStorage {
           ? "pending" 
           : "none";
 
+      // Get badges for mentor (FOUNDING_MENTOR and VERIFIED_MENTOR are always visible)
+      const allBadges = await this.getUserBadges(mentor.id);
+      const visibleBadges = allBadges.filter(b => 
+        b.code === "FOUNDING_MENTOR" || 
+        b.code === "VERIFIED_MENTOR" ||
+        connectionStatus === "approved"
+      );
+
       profiles.push({
         ...profile,
         connectionStatus: connectionStatus as "none" | "pending" | "approved",
+        badges: visibleBadges,
       });
     }
 
