@@ -3,35 +3,41 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProfileCard } from "@/components/ProfileCard";
-import { MatchNotification } from "@/components/MatchNotification";
 import { ConnectionRequest } from "@/components/ConnectionRequest";
 import { ProfileDialog, type ProfileDialogData } from "@/components/ProfileDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, Users, Bell } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Sparkles, Users, Bell, MapPin, Calendar, Unlock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { getMatches, getMentors, getPendingConnections, requestConnection, approveConnection, declineConnection } from "@/lib/api";
+import { getUnlockedMatches, getSuggestedMentors, getPendingConnections, requestConnection, approveConnection, declineConnection } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import type { MatchData, UserProfileWithBadges, Connection } from "@shared/schema";
+import type { UnlockedMatchData, UserProfileWithBadges, Connection } from "@shared/schema";
+import { format } from "date-fns";
+import { UserBadge } from "@/components/UserBadge";
 
 export default function Matches() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  const { data: matches = [], isLoading: matchesLoading } = useQuery<MatchData[]>({
-    queryKey: ["/api/matches"],
-    queryFn: getMatches,
+  // Unlocked matches (event-based)
+  const { data: unlockedMatches = [], isLoading: matchesLoading } = useQuery<UnlockedMatchData[]>({
+    queryKey: ["/api/matches/new"],
+    queryFn: getUnlockedMatches,
     enabled: !!user,
   });
 
-  const { data: mentors = [], isLoading: mentorsLoading } = useQuery<UserProfileWithBadges[]>({
-    queryKey: ["/api/mentors"],
-    queryFn: getMentors,
-    enabled: !!user,
+  // Suggested mentors (interest-based, for Browse Mentors tab)
+  const { data: suggestedMentors = [], isLoading: mentorsLoading } = useQuery<UserProfileWithBadges[]>({
+    queryKey: ["/api/mentors/suggested"],
+    queryFn: getSuggestedMentors,
+    enabled: !!user && user.role === "mentee",
   });
   
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
@@ -46,7 +52,8 @@ export default function Matches() {
   const connectMutation = useMutation({
     mutationFn: (toUserId: string) => requestConnection(toUserId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/mentors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mentors/suggested"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/matches/new"] });
       toast({ title: "Connection request sent!" });
     },
     onError: () => {
@@ -86,8 +93,8 @@ export default function Matches() {
   };
 
   const handleViewProfile = (profileId: string) => {
-    const matchedProfile = matches.find(m => m.matchedUser.id === profileId)?.matchedUser;
-    const mentorProfile = mentors.find(m => m.id === profileId);
+    const matchedProfile = unlockedMatches.find(m => m.person.id === profileId)?.person;
+    const mentorProfile = suggestedMentors.find(m => m.id === profileId);
     const profile = matchedProfile || mentorProfile;
     
     if (profile) {
@@ -143,11 +150,11 @@ export default function Matches() {
           <Tabs defaultValue="matches" className="space-y-6">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="matches" className="gap-2" data-testid="tab-matches">
-                <Sparkles className="h-4 w-4" />
+                <Unlock className="h-4 w-4" />
                 New Matches
-                {matches.length > 0 && (
+                {unlockedMatches.length > 0 && (
                   <Badge variant="secondary" className="ml-1">
-                    {matches.length}
+                    {unlockedMatches.length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -173,35 +180,104 @@ export default function Matches() {
                     <Skeleton key={i} className="h-48" />
                   ))}
                 </div>
-              ) : matches.length === 0 ? (
+              ) : unlockedMatches.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
-                  <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No new matches</p>
-                  <p className="text-sm">
-                    RSVP to more events to find mentors with shared interests
+                  <Unlock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">No unlocked matches yet</p>
+                  <p className="text-sm max-w-md mx-auto">
+                    Matches unlock when you and a mentor RSVP to the same event and share at least 2 interests.
                   </p>
                 </div>
               ) : (
-                matches.map((match) => (
-                  <MatchNotification
-                    key={match.id}
-                    match={{
-                      ...match,
-                      matchedUser: {
-                        id: match.matchedUser.id || "",
-                        firstName: match.matchedUser.firstName || "",
-                        lastName: match.matchedUser.lastName || "",
-                        role: (match.matchedUser.role as "mentor" | "mentee") || "mentor",
-                        company: match.matchedUser.company || undefined,
-                        jobTitle: match.matchedUser.jobTitle || undefined,
-                        profileImageUrl: match.matchedUser.profileImageUrl || undefined,
-                        badges: match.matchedUser.badges,
-                      },
-                    }}
-                    onViewProfile={(id) => handleViewProfile(id)}
-                    onViewEvent={(eventId) => console.log("View event:", eventId)}
-                  />
-                ))
+                unlockedMatches.map((match) => {
+                  const person = match.person;
+                  const fullName = `${person.firstName || ""} ${person.lastName || ""}`.trim() || "User";
+                  const initials = `${person.firstName?.[0] || ""}${person.lastName?.[0] || ""}`.toUpperCase() || "U";
+                  
+                  return (
+                    <Card key={match.matchId} data-testid={`card-match-${match.matchId}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-4">
+                          <Avatar className="h-14 w-14">
+                            <AvatarImage src={person.profileImageUrl || undefined} alt={fullName} />
+                            <AvatarFallback>{initials}</AvatarFallback>
+                          </Avatar>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-semibold text-lg">{fullName}</h3>
+                              {person.badges?.map((badge) => (
+                                <UserBadge key={badge.code} badge={badge} variant="icon" />
+                              ))}
+                            </div>
+                            
+                            {(person.jobTitle || person.company) && (
+                              <p className="text-muted-foreground text-sm">
+                                {person.jobTitle}{person.jobTitle && person.company ? " at " : ""}{person.company}
+                              </p>
+                            )}
+                            
+                            <div className="mt-3 p-3 bg-muted/50 rounded-md">
+                              <div className="flex items-center gap-2 text-sm">
+                                <Unlock className="h-4 w-4 text-primary" />
+                                <span className="font-medium">Unlocked at:</span>
+                                <span>{match.event.title}</span>
+                              </div>
+                              <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                                {match.event.startAt && (
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>{format(new Date(match.event.startAt), "MMM d, yyyy")}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  <span>{match.event.location}</span>
+                                </div>
+                              </div>
+                              <div className="mt-2 text-sm">
+                                <Badge variant="secondary">{match.overlapScore} shared interests</Badge>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col gap-2">
+                            {person.connectionStatus === "none" && (
+                              <Button 
+                                onClick={() => handleConnect(person.id)}
+                                disabled={connectMutation.isPending}
+                                data-testid={`button-connect-${person.id}`}
+                              >
+                                Connect
+                              </Button>
+                            )}
+                            {person.connectionStatus === "pending" && (
+                              <Button variant="secondary" disabled>
+                                Pending
+                              </Button>
+                            )}
+                            {person.connectionStatus === "approved" && (
+                              <Button 
+                                variant="secondary"
+                                onClick={() => handleMessage(person.id)}
+                                data-testid={`button-message-${person.id}`}
+                              >
+                                Message
+                              </Button>
+                            )}
+                            <Button 
+                              variant="outline" 
+                              onClick={() => handleViewProfile(person.id)}
+                              data-testid={`button-view-profile-${person.id}`}
+                            >
+                              View Profile
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
               )}
             </TabsContent>
 
@@ -212,15 +288,15 @@ export default function Matches() {
                     <Skeleton key={i} className="h-40" />
                   ))}
                 </div>
-              ) : mentors.length === 0 ? (
+              ) : suggestedMentors.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No mentors available</p>
-                  <p className="text-sm">Check back later for new mentors</p>
+                  <p className="text-lg font-medium">No suggested mentors</p>
+                  <p className="text-sm">Add more interests to your profile to find mentors</p>
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {mentors.map((mentor) => (
+                  {suggestedMentors.map((mentor) => (
                     <ProfileCard
                       key={mentor.id}
                       profile={{
@@ -239,6 +315,7 @@ export default function Matches() {
                       onConnect={() => handleConnect(mentor.id)}
                       onMessage={() => handleMessage(mentor.id)}
                       onViewProfile={() => handleViewProfile(mentor.id)}
+                      isSuggested={true}
                     />
                   ))}
                 </div>

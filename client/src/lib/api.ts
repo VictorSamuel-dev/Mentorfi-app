@@ -5,10 +5,12 @@ import type {
   EventWithAttendees, 
   UserProfile, 
   MatchData, 
+  UnlockedMatchData,
   Connection,
   Message,
   ConversationData,
-  EventAttendeesResponse
+  EventAttendeesResponse,
+  UserProfileWithBadges
 } from "@shared/schema";
 
 // Auth API
@@ -96,8 +98,18 @@ export async function getMatches(): Promise<MatchData[]> {
   return res.json();
 }
 
-export async function getMentors(): Promise<UserProfile[]> {
+export async function getUnlockedMatches(): Promise<UnlockedMatchData[]> {
+  const res = await fetch("/api/matches/new", { credentials: "include" });
+  return res.json();
+}
+
+export async function getMentors(): Promise<UserProfileWithBadges[]> {
   const res = await fetch("/api/mentors", { credentials: "include" });
+  return res.json();
+}
+
+export async function getSuggestedMentors(): Promise<UserProfileWithBadges[]> {
+  const res = await fetch("/api/mentors/suggested", { credentials: "include" });
   return res.json();
 }
 

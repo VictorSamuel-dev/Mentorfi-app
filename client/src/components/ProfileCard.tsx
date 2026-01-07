@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, MessageSquare, UserPlus, CheckCircle } from "lucide-react";
+import { Building2, MessageSquare, UserPlus, CheckCircle, Sparkles } from "lucide-react";
 import { BadgeRow } from "@/components/UserBadge";
 import type { BadgeDisplay } from "@shared/schema";
 
@@ -28,6 +28,7 @@ interface ProfileCardProps {
   onConnect?: (profileId: string) => void;
   onMessage?: (profileId: string) => void;
   onViewProfile?: (profileId: string) => void;
+  isSuggested?: boolean;
 }
 
 export function ProfileCard({
@@ -37,6 +38,7 @@ export function ProfileCard({
   onConnect,
   onMessage,
   onViewProfile,
+  isSuggested = false,
 }: ProfileCardProps) {
   const getInitials = () => {
     return `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase();
@@ -62,6 +64,12 @@ export function ProfileCard({
               <Badge variant="secondary" className="text-xs">
                 {profile.role === "mentor" ? "Mentor" : "Mentee"}
               </Badge>
+              {isSuggested && (
+                <Badge variant="outline" className="text-xs gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  Suggested
+                </Badge>
+              )}
               {profile.badges && profile.badges.length > 0 && (
                 <BadgeRow badges={profile.badges} variant="pill" maxDisplay={2} />
               )}
