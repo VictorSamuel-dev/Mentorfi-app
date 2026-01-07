@@ -36,9 +36,10 @@ export function HeroSection() {
             size="lg"
             variant="outline"
             className="backdrop-blur-sm bg-white/10 border-white/30 text-white"
+            asChild
             data-testid="button-hero-learn-more"
           >
-            Learn More
+            <a href="/events">Learn More</a>
           </Button>
         </div>
 
