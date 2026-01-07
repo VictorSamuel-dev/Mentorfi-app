@@ -25,44 +25,6 @@ function parseIconVariants(iconSvg: string | null | undefined): BadgeIconVariant
 }
 
 export function UserBadge({ badge, variant = "pill", className }: UserBadgeProps) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-  
-  const iconVariants = parseIconVariants(badge.iconSvg);
-  
-  const getSvgForVariant = (): string | null => {
-    if (!iconVariants) {
-      return null;
-    }
-    
-    switch (variant) {
-      case "pill":
-        return isDark ? iconVariants.pillDark || null : iconVariants.pillLight || iconVariants.pillDark || null;
-      case "compact":
-        return iconVariants.compact || null;
-      case "icon":
-        return iconVariants.iconOnly || null;
-      default:
-        return null;
-    }
-  };
-
-  const svg = getSvgForVariant();
-  
-  if (svg && iconVariants) {
-    const isPillSvg = svg.includes('viewBox=') && svg.includes('<svg');
-    
-    if (isPillSvg && variant !== "icon") {
-      return (
-        <span
-          className={cn("inline-flex", className)}
-          dangerouslySetInnerHTML={{ __html: svg }}
-          data-testid={`badge-${badge.code.toLowerCase()}`}
-        />
-      );
-    }
-  }
-  
   const baseStyles = "inline-flex items-center gap-1 font-semibold rounded-md transition-colors";
   
   const variantStyles = {
@@ -77,7 +39,31 @@ export function UserBadge({ badge, variant = "pill", className }: UserBadgeProps
     borderColor: badge.borderColor,
   };
 
-  const iconSvg = iconVariants?.iconOnly || badge.iconSvg;
+  const getBadgeIcon = () => {
+    if (badge.code === "FOUNDING_MENTOR") {
+      return (
+        <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 flex-shrink-0">
+          <path d="M8 1L10 5.5L15 6L11.5 9.5L12.5 14.5L8 12L3.5 14.5L4.5 9.5L1 6L6 5.5L8 1Z" fill="#FBBF24"/>
+        </svg>
+      );
+    }
+    if (badge.code === "VERIFIED_MENTOR") {
+      return (
+        <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 flex-shrink-0">
+          <path d="M8 0L10 3L13.5 2L12.5 5.5L16 7L12.5 8.5L13.5 12L10 11L8 14L6 11L2.5 12L3.5 8.5L0 7L3.5 5.5L2.5 2L6 3L8 0Z" fill="#3B82F6"/>
+          <path d="M6 8L7.5 9.5L10 6.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      );
+    }
+    if (badge.code === "EARLY_SUPPORTER") {
+      return (
+        <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 flex-shrink-0">
+          <path d="M8 2C4.69 2 2 4.69 2 8C2 11.31 4.69 14 8 14C11.31 14 14 11.31 14 8C14 4.69 11.31 2 8 2ZM8 4L9.5 7H12.5L10 9L11 12L8 10L5 12L6 9L3.5 7H6.5L8 4Z" fill="#64748B"/>
+        </svg>
+      );
+    }
+    return null;
+  };
 
   return (
     <div
@@ -85,15 +71,7 @@ export function UserBadge({ badge, variant = "pill", className }: UserBadgeProps
       style={style}
       data-testid={`badge-${badge.code.toLowerCase()}`}
     >
-      {iconSvg && (
-        <span
-          className={cn(
-            "flex-shrink-0",
-            variant === "icon" ? "w-3 h-3" : "w-3 h-3"
-          )}
-          dangerouslySetInnerHTML={{ __html: iconSvg }}
-        />
-      )}
+      {getBadgeIcon()}
       {variant !== "icon" && (
         <span>{variant === "compact" ? badge.name.split(" ")[0] : badge.name}</span>
       )}
