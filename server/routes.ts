@@ -223,6 +223,24 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/events/:id/attendees-visible", requireAuth, async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const viewerId = req.session.userId!;
+
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+
+      const result = await storage.getEventVisibleAttendees(eventId, viewerId);
+      res.json(result);
+    } catch (error) {
+      console.error("Get visible attendees error:", error);
+      res.status(500).json({ error: "Failed to fetch attendees" });
+    }
+  });
+
   // =====================
   // CONNECTION ROUTES
   // =====================
