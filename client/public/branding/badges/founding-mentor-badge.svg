@@ -1,0 +1,23 @@
+<svg width="360" height="96" viewBox="0 0 360 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Pill -->
+  <rect x="2" y="2" width="356" height="92" rx="46" fill="#0B1220" stroke="#FACC15" stroke-width="4"/>
+
+  <!-- Logo mark (simplified) -->
+  <g transform="translate(22,18)">
+    <rect x="0" y="0" width="60" height="60" rx="16" fill="#111827"/>
+    <path d="M14 49V11H24L30 21L36 11H46V49H38V24L30 35L22 24V49H14Z" fill="#2563EB"/>
+    <path d="M31 22C36 16 42 13 49 11" stroke="#FACC15" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M52 6L55 12L62 13L57 18L58 25L52 21L46 25L47 18L42 13L49 12L52 6Z" fill="#FACC15"/>
+  </g>
+
+  <!-- Text -->
+  <text x="102" y="42" fill="#FACC15" font-size="18" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto" font-weight="800" letter-spacing="0.5">
+    FOUNDING MENTOR
+  </text>
+  <text x="102" y="66" fill="#E5E7EB" font-size="14" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto" font-weight="600">
+    Early supporter • Verified mentor
+  </text>
+
+  <!-- Small star accent -->
+  <path d="M330 24L334 33L344 34L336 40L338 50L330 45L322 50L324 40L316 34L326 33L330 24Z" fill="#FACC15" opacity="0.9"/>
+</svg>

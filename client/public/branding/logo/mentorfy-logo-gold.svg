@@ -1,11 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>
-    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#F59E0B"/>
-      <stop offset="100%" style="stop-color:#D97706"/>
-    </linearGradient>
-  </defs>
-  <path d="M15 85 L15 25 L35 55 L50 30 L65 55 L85 25 L85 85 L70 85 L70 55 L50 85 L30 55 L30 85 Z" fill="url(#goldGrad)"/>
-  <path d="M55 20 Q70 10 75 5 L77 7 Q65 20 55 25 Z" fill="url(#goldGrad)"/>
-  <polygon points="75,2 80,8 73,10 70,4" fill="url(#goldGrad)"/>
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="60" height="60" rx="16" fill="transparent"/>
+  <path d="M14 49V11H24L30 21L36 11H46V49H38V24L30 35L22 24V49H14Z" fill="#FACC15"/>
+  <path d="M31 22C36 16 42 13 49 11" stroke="#FACC15" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M52 6L55 12L62 13L57 18L58 25L52 21L46 25L47 18L42 13L49 12L52 6Z" fill="#FACC15"/>
 </svg>
