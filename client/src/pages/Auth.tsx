@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
   const [, setLocation] = useLocation();
-  const { login, register, loginPending, registerPending } = useAuth();
+  const { login, register, loginPending, registerPending, refetch } = useAuth();
   const { toast } = useToast();
 
   // Login form state
@@ -31,6 +31,7 @@ export default function Auth() {
     e.preventDefault();
     try {
       await login({ email: loginEmail, password: loginPassword });
+      await refetch();
       toast({ title: "Welcome back!" });
       setLocation("/dashboard");
     } catch (error: any) {
@@ -52,6 +53,7 @@ export default function Auth() {
         lastName,
         role,
       });
+      await refetch();
       toast({ title: "Account created successfully!" });
       setLocation("/dashboard");
     } catch (error: any) {
