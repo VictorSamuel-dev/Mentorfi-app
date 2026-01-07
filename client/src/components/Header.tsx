@@ -55,8 +55,7 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
             <img 
               src={logoImage} 
               alt="Mentorfy" 
-              className="h-8 w-8"
-              style={{ filter: 'brightness(0) saturate(100%) invert(37%) sepia(93%) saturate(1352%) hue-rotate(196deg) brightness(97%) contrast(101%)' }}
+              className="h-8 w-auto object-contain"
             />
             <span className="font-semibold text-lg hidden sm:block">Mentorfy</span>
           </Link>
