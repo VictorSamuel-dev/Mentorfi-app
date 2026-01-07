@@ -499,6 +499,116 @@ export async function registerRoutes(
   });
 
   // =====================
+  // BADGE ROUTES
+  // =====================
+
+  // Get all badges (public)
+  app.get("/api/badges", async (req, res) => {
+    try {
+      const allBadges = await storage.getBadges();
+      res.json(allBadges);
+    } catch (error) {
+      console.error("Get badges error:", error);
+      res.status(500).json({ error: "Failed to fetch badges" });
+    }
+  });
+
+  // Get badges for a specific user
+  app.get("/api/users/:id/badges", requireAuth, async (req, res) => {
+    try {
+      const targetUserId = req.params.id;
+      const viewerId = req.session.userId!;
+      
+      const profile = await storage.getUserProfileWithBadges(targetUserId, viewerId);
+      if (!profile) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({ badges: profile.badges || [] });
+    } catch (error) {
+      console.error("Get user badges error:", error);
+      res.status(500).json({ error: "Failed to fetch user badges" });
+    }
+  });
+
+  // Get user profile with badges (respects visibility rules)
+  app.get("/api/users/:id/profile-with-badges", requireAuth, async (req, res) => {
+    try {
+      const targetUserId = req.params.id;
+      const viewerId = req.session.userId!;
+      
+      const profile = await storage.getUserProfileWithBadges(targetUserId, viewerId);
+      if (!profile) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json(profile);
+    } catch (error) {
+      console.error("Get user profile with badges error:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  // Admin-only: Award a badge to a user
+  app.post("/api/badges/award", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const { userId, badgeCode, metadata } = req.body;
+      
+      if (!userId || !badgeCode) {
+        return res.status(400).json({ error: "userId and badgeCode are required" });
+      }
+
+      const badge = await storage.getBadgeByCode(badgeCode);
+      if (!badge) {
+        return res.status(404).json({ error: "Badge not found" });
+      }
+
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const userBadge = await storage.awardBadge(userId, badge.id, metadata);
+      res.json({ success: true, userBadge });
+    } catch (error) {
+      console.error("Award badge error:", error);
+      res.status(500).json({ error: "Failed to award badge" });
+    }
+  });
+
+  // Admin-only: Revoke a badge from a user
+  app.post("/api/badges/revoke", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const { userId, badgeCode } = req.body;
+      
+      if (!userId || !badgeCode) {
+        return res.status(400).json({ error: "userId and badgeCode are required" });
+      }
+
+      const badge = await storage.getBadgeByCode(badgeCode);
+      if (!badge) {
+        return res.status(404).json({ error: "Badge not found" });
+      }
+
+      await storage.revokeBadge(userId, badge.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Revoke badge error:", error);
+      res.status(500).json({ error: "Failed to revoke badge" });
+    }
+  });
+
+  // =====================
   // ADMIN ROUTES (Basic)
   // =====================
 
@@ -519,6 +629,9 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
+
+  // Seed badges on server start
+  await storage.seedBadges();
 
   return httpServer;
 }

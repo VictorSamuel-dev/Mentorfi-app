@@ -6,6 +6,8 @@ import {
   eventRsvps,
   connections,
   messages,
+  badges,
+  userBadges,
   type User,
   type InsertUser,
   type Event,
@@ -22,6 +24,12 @@ import {
   type ConversationData,
   type EventAttendeesResponse,
   type VisibleAttendee,
+  type Badge,
+  type InsertBadge,
+  type UserBadge,
+  type InsertUserBadge,
+  type BadgeDisplay,
+  type UserProfileWithBadges,
 } from "@shared/schema";
 import { hashPassword, comparePasswords } from "./utils/password";
 
@@ -63,6 +71,17 @@ export interface IStorage {
   // Matching operations
   getMatchesForUser(userId: string): Promise<MatchData[]>;
   getMentorsForBrowsing(userId: string): Promise<UserProfile[]>;
+  
+  // Badge operations
+  getBadges(): Promise<Badge[]>;
+  getBadgeByCode(code: string): Promise<Badge | undefined>;
+  createBadge(badge: InsertBadge): Promise<Badge>;
+  getUserBadges(userId: string): Promise<BadgeDisplay[]>;
+  awardBadge(userId: string, badgeId: number, metadata?: Record<string, unknown>): Promise<UserBadge>;
+  revokeBadge(userId: string, badgeId: number): Promise<void>;
+  hasApprovedConnection(userId1: string, userId2: string): Promise<boolean>;
+  getUserProfileWithBadges(id: string, viewerId?: string): Promise<UserProfileWithBadges | undefined>;
+  seedBadges(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -424,6 +443,161 @@ export class DatabaseStorage implements IStorage {
     }
 
     return profiles;
+  }
+
+  // Badge operations
+  async getBadges(): Promise<Badge[]> {
+    return db.select().from(badges);
+  }
+
+  async getBadgeByCode(code: string): Promise<Badge | undefined> {
+    const result = await db.select().from(badges).where(eq(badges.code, code));
+    return result[0];
+  }
+
+  async createBadge(badge: InsertBadge): Promise<Badge> {
+    const result = await db.insert(badges).values(badge).returning();
+    return result[0];
+  }
+
+  async getUserBadges(userId: string): Promise<BadgeDisplay[]> {
+    const result = await db
+      .select({
+        id: badges.id,
+        code: badges.code,
+        name: badges.name,
+        tier: badges.tier,
+        textColor: badges.textColor,
+        bgColor: badges.bgColor,
+        borderColor: badges.borderColor,
+        iconSvg: badges.iconSvg,
+      })
+      .from(userBadges)
+      .innerJoin(badges, eq(userBadges.badgeId, badges.id))
+      .where(and(
+        eq(userBadges.userId, userId),
+        sql`${userBadges.revokedAt} IS NULL`
+      ));
+    
+    return result;
+  }
+
+  async awardBadge(userId: string, badgeId: number, metadata?: Record<string, unknown>): Promise<UserBadge> {
+    const existing = await db
+      .select()
+      .from(userBadges)
+      .where(and(
+        eq(userBadges.userId, userId),
+        eq(userBadges.badgeId, badgeId),
+        sql`${userBadges.revokedAt} IS NULL`
+      ));
+    
+    if (existing.length > 0) {
+      return existing[0];
+    }
+
+    const result = await db
+      .insert(userBadges)
+      .values({ userId, badgeId, metadata })
+      .returning();
+    return result[0];
+  }
+
+  async revokeBadge(userId: string, badgeId: number): Promise<void> {
+    await db
+      .update(userBadges)
+      .set({ revokedAt: new Date() })
+      .where(and(
+        eq(userBadges.userId, userId),
+        eq(userBadges.badgeId, badgeId),
+        sql`${userBadges.revokedAt} IS NULL`
+      ));
+  }
+
+  async hasApprovedConnection(userId1: string, userId2: string): Promise<boolean> {
+    const connection = await this.getConnectionBetweenUsers(userId1, userId2);
+    return connection?.status === "approved";
+  }
+
+  async getUserProfileWithBadges(id: string, viewerId?: string): Promise<UserProfileWithBadges | undefined> {
+    const user = await this.getUser(id);
+    if (!user) return undefined;
+    
+    const { password, ...profile } = user;
+    const userBadgesList = await this.getUserBadges(id);
+    
+    // Filter badges based on visibility rules
+    let visibleBadges: BadgeDisplay[] = [];
+    
+    if (user.role === "mentor") {
+      // Mentor badges (FOUNDING_MENTOR, VERIFIED_MENTOR) are always visible
+      visibleBadges = userBadgesList.filter(b => 
+        b.code === "FOUNDING_MENTOR" || 
+        b.code === "VERIFIED_MENTOR"
+      );
+    }
+    
+    // If viewer exists and has approved connection, show all badges
+    if (viewerId && viewerId !== id) {
+      const hasConnection = await this.hasApprovedConnection(viewerId, id);
+      if (hasConnection) {
+        visibleBadges = userBadgesList;
+      }
+    }
+    
+    // User viewing their own profile sees all their badges
+    if (viewerId === id) {
+      visibleBadges = userBadgesList;
+    }
+
+    return {
+      ...profile,
+      badges: visibleBadges,
+    };
+  }
+
+  async seedBadges(): Promise<void> {
+    const existingBadges = await this.getBadges();
+    if (existingBadges.length > 0) return;
+
+    const badgesToSeed: InsertBadge[] = [
+      {
+        code: "FOUNDING_MENTOR",
+        name: "Founding Mentor",
+        description: "One of the first mentors to join Mentorfy",
+        tier: "special",
+        textColor: "#FBBF24",
+        bgColor: "#0B1220",
+        borderColor: "#FBBF24",
+        iconSvg: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 1L10 5.5L15 6L11.5 9.5L12.5 14.5L8 12L3.5 14.5L4.5 9.5L1 6L6 5.5L8 1Z" fill="#FBBF24"/></svg>`,
+      },
+      {
+        code: "VERIFIED_MENTOR",
+        name: "Verified Mentor",
+        description: "Identity and employment verified",
+        tier: "trust",
+        textColor: "#3B82F6",
+        bgColor: "#0B1220",
+        borderColor: "#3B82F6",
+        iconSvg: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 0L10 3L13.5 2L12.5 5.5L16 7L12.5 8.5L13.5 12L10 11L8 14L6 11L2.5 12L3.5 8.5L0 7L3.5 5.5L2.5 2L6 3L8 0Z" fill="#3B82F6"/><path d="M6 8L7.5 9.5L10 6.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      },
+      {
+        code: "EARLY_SUPPORTER",
+        name: "Early Supporter",
+        description: "Joined during Mentorfy's early days",
+        tier: "community",
+        textColor: "#64748B",
+        bgColor: "#0B1220",
+        borderColor: "#64748B",
+        iconSvg: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2C4.69 2 2 4.69 2 8C2 11.31 4.69 14 8 14C11.31 14 14 11.31 14 8C14 4.69 11.31 2 8 2ZM8 4L9.5 7H12.5L10 9L11 12L8 10L5 12L6 9L3.5 7H6.5L8 4Z" fill="#64748B"/></svg>`,
+      },
+    ];
+
+    for (const badge of badgesToSeed) {
+      await this.createBadge(badge);
+    }
+    
+    console.log("Seeded badges:", badgesToSeed.map(b => b.code).join(", "));
   }
 }
 
