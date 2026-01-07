@@ -493,6 +493,7 @@ export async function registerRoutes(
   app.get("/api/mentors", requireAuth, async (req, res) => {
     try {
       const mentors = await storage.getMentorsForBrowsing(req.session.userId!);
+      console.log("Mentors with badges:", mentors.map(m => ({ email: m.email, badges: m.badges })));
       res.json(mentors);
     } catch (error) {
       console.error("Get mentors error:", error);
