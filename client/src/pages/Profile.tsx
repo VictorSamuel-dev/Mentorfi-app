@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -39,8 +39,8 @@ export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  const { data: profile, isLoading: profileLoading } = useQuery<UserProfileWithBadges>({
-    queryKey: ["/api/users/profile", user?.id],
+  const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery<UserProfileWithBadges>({
+    queryKey: ["/api/users/profile"],
     enabled: !!user,
   });
 
@@ -73,9 +73,10 @@ export default function Profile() {
       interests: data.interests?.split(",").map(s => s.trim()).filter(Boolean),
       targetCompanies: data.targetCompanies?.split(",").map(s => s.trim()).filter(Boolean),
     }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users/profile"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/users/profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      await refetchProfile();
       toast({
         title: "Profile updated",
         description: "Your profile has been saved successfully.",
@@ -142,8 +143,9 @@ export default function Profile() {
 
       await updateProfile({ profileImageUrl: objectPath });
       
-      queryClient.invalidateQueries({ queryKey: ["/api/users/profile"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/users/profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      await refetchProfile();
 
       toast({
         title: "Image updated",
@@ -168,12 +170,13 @@ export default function Profile() {
     updateMutation.mutate(data);
   };
 
-  if (authLoading) {
-    return null;
-  }
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setLocation("/login");
+    }
+  }, [authLoading, user, setLocation]);
 
-  if (!user) {
-    setLocation("/login");
+  if (authLoading || !user) {
     return null;
   }
 
