@@ -32,7 +32,7 @@ export function UserBadge({ badge, variant = "pill", className }: UserBadgeProps
   
   const getSvgForVariant = (): string | null => {
     if (!iconVariants) {
-      return badge.iconSvg || null;
+      return null;
     }
     
     switch (variant) {
@@ -49,8 +49,8 @@ export function UserBadge({ badge, variant = "pill", className }: UserBadgeProps
 
   const svg = getSvgForVariant();
   
-  if (svg && (variant === "pill" || iconVariants)) {
-    const isPillSvg = svg.includes('viewBox="0 0 1') && (svg.includes('text') || variant !== "icon");
+  if (svg && iconVariants) {
+    const isPillSvg = svg.includes('viewBox=') && svg.includes('<svg');
     
     if (isPillSvg && variant !== "icon") {
       return (
