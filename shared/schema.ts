@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -162,7 +162,9 @@ export const matches = pgTable("matches", {
   eventId: integer("event_id").notNull().references(() => events.id),
   overlapScore: integer("overlap_score").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("matches_mentor_mentee_event_idx").on(table.mentorId, table.menteeId, table.eventId),
+]);
 
 export const insertMatchSchema = createInsertSchema(matches).omit({
   id: true,

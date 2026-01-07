@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -16,7 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUnlockedMatches, getSuggestedMentors, getPendingConnections, requestConnection, approveConnection, declineConnection } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { useLocation, Redirect } from "wouter";
 import type { UnlockedMatchData, UserProfileWithBadges, Connection } from "@shared/schema";
 import { format } from "date-fns";
 import { UserBadge } from "@/components/UserBadge";
@@ -130,8 +130,7 @@ export default function Matches() {
   }
 
   if (!user) {
-    setLocation("/auth");
-    return null;
+    return <Redirect to="/auth" />;
   }
 
   return (
