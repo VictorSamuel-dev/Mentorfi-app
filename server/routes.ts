@@ -207,6 +207,10 @@ export async function registerRoutes(
       }
 
       const rsvp = await storage.createRsvp({ userId, eventId });
+      
+      // Generate matches for this event after RSVP
+      await storage.upsertEventMatchesForEvent(eventId);
+      
       res.json(rsvp);
     } catch (error) {
       console.error("RSVP error:", error);
@@ -490,14 +494,40 @@ export async function registerRoutes(
     }
   });
 
+  // Get unlocked matches (event-based)
+  app.get("/api/matches/new", requireAuth, async (req, res) => {
+    try {
+      const matches = await storage.getUnlockedMatchesForUser(req.session.userId!);
+      res.json(matches);
+    } catch (error) {
+      console.error("Get unlocked matches error:", error);
+      res.status(500).json({ error: "Failed to fetch matches" });
+    }
+  });
+
   app.get("/api/mentors", requireAuth, async (req, res) => {
     try {
       const mentors = await storage.getMentorsForBrowsing(req.session.userId!);
-      console.log("Mentors with badges:", mentors.map(m => ({ email: m.email, badges: m.badges })));
       res.json(mentors);
     } catch (error) {
       console.error("Get mentors error:", error);
       res.status(500).json({ error: "Failed to fetch mentors" });
+    }
+  });
+
+  // Get suggested mentors (interest-based, no shared event required)
+  app.get("/api/mentors/suggested", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "mentee") {
+        return res.status(403).json({ error: "Only mentees can view suggested mentors" });
+      }
+      
+      const mentors = await storage.getSuggestedMentors(req.session.userId!);
+      res.json(mentors);
+    } catch (error) {
+      console.error("Get suggested mentors error:", error);
+      res.status(500).json({ error: "Failed to fetch suggested mentors" });
     }
   });
 
