@@ -8,6 +8,7 @@ import {
   messages,
   badges,
   userBadges,
+  matches,
   type User,
   type InsertUser,
   type Event,
@@ -18,9 +19,12 @@ import {
   type InsertConnection,
   type Message,
   type InsertMessage,
+  type Match,
+  type InsertMatch,
   type EventWithAttendees,
   type UserProfile,
   type MatchData,
+  type UnlockedMatchData,
   type ConversationData,
   type EventAttendeesResponse,
   type VisibleAttendee,
@@ -71,6 +75,10 @@ export interface IStorage {
   // Matching operations
   getMatchesForUser(userId: string): Promise<MatchData[]>;
   getMentorsForBrowsing(userId: string): Promise<UserProfileWithBadges[]>;
+  getUnlockedMatchesForUser(userId: string): Promise<UnlockedMatchData[]>;
+  getSuggestedMentors(userId: string): Promise<UserProfileWithBadges[]>;
+  computeOverlapScore(userId1: string, userId2: string): Promise<number>;
+  upsertEventMatchesForEvent(eventId: number): Promise<void>;
   
   // Badge operations
   getBadges(): Promise<Badge[]>;
@@ -464,6 +472,199 @@ export class DatabaseStorage implements IStorage {
     }
 
     return profiles;
+  }
+
+  // Compute overlap score (number of shared interests)
+  async computeOverlapScore(userId1: string, userId2: string): Promise<number> {
+    const user1 = await this.getUser(userId1);
+    const user2 = await this.getUser(userId2);
+    
+    if (!user1 || !user2) return 0;
+    
+    const interests1 = user1.interests || [];
+    const interests2 = user2.interests || [];
+    
+    const sharedInterests = interests1.filter(i => 
+      interests2.some(i2 => i2.toLowerCase() === i.toLowerCase())
+    );
+    
+    return sharedInterests.length;
+  }
+
+  // Upsert matches for all mentee-mentor pairs at an event
+  async upsertEventMatchesForEvent(eventId: number): Promise<void> {
+    const MINIMUM_OVERLAP_THRESHOLD = 2;
+    
+    // Get all RSVPs for this event
+    const rsvps = await db
+      .select()
+      .from(eventRsvps)
+      .where(eq(eventRsvps.eventId, eventId));
+    
+    if (rsvps.length === 0) return;
+    
+    const rsvpUserIds = rsvps.map(r => r.userId);
+    
+    // Get all users who RSVP'd
+    const rsvpUsers = await db
+      .select()
+      .from(users)
+      .where(inArray(users.id, rsvpUserIds));
+    
+    const mentees = rsvpUsers.filter(u => u.role === "mentee");
+    const mentors = rsvpUsers.filter(u => u.role === "mentor");
+    
+    // For each mentee-mentor pair, compute overlap and upsert match if >= threshold
+    for (const mentee of mentees) {
+      for (const mentor of mentors) {
+        const overlapScore = await this.computeOverlapScore(mentee.id, mentor.id);
+        
+        if (overlapScore >= MINIMUM_OVERLAP_THRESHOLD) {
+          // Check if match already exists
+          const existing = await db
+            .select()
+            .from(matches)
+            .where(and(
+              eq(matches.menteeId, mentee.id),
+              eq(matches.mentorId, mentor.id),
+              eq(matches.eventId, eventId)
+            ));
+          
+          if (existing.length === 0) {
+            // Insert new match
+            await db.insert(matches).values({
+              menteeId: mentee.id,
+              mentorId: mentor.id,
+              eventId,
+              overlapScore,
+            });
+          } else {
+            // Update overlap score if it changed
+            await db
+              .update(matches)
+              .set({ overlapScore })
+              .where(eq(matches.id, existing[0].id));
+          }
+        }
+      }
+    }
+  }
+
+  // Get unlocked matches for user (event-based matches)
+  async getUnlockedMatchesForUser(userId: string): Promise<UnlockedMatchData[]> {
+    const user = await this.getUser(userId);
+    if (!user) return [];
+    
+    let userMatches: Match[];
+    
+    if (user.role === "mentee") {
+      userMatches = await db
+        .select()
+        .from(matches)
+        .where(eq(matches.menteeId, userId))
+        .orderBy(desc(matches.createdAt));
+    } else {
+      userMatches = await db
+        .select()
+        .from(matches)
+        .where(eq(matches.mentorId, userId))
+        .orderBy(desc(matches.createdAt));
+    }
+    
+    const results: UnlockedMatchData[] = [];
+    
+    for (const match of userMatches) {
+      const matchedUserId = user.role === "mentee" ? match.mentorId : match.menteeId;
+      const matchedUser = await this.getUser(matchedUserId);
+      const event = await this.getEvent(match.eventId);
+      
+      if (!matchedUser || !event) continue;
+      
+      const { password, ...profile } = matchedUser;
+      
+      // Get connection status
+      const connection = await this.getConnectionBetweenUsers(userId, matchedUserId);
+      const connectionStatus = connection?.status === "approved" 
+        ? "approved" 
+        : connection?.status === "pending" 
+          ? "pending" 
+          : "none";
+      
+      // Get visible badges
+      const allBadges = await this.getUserBadges(matchedUserId);
+      const visibleBadges = matchedUser.role === "mentor"
+        ? allBadges.filter(b => b.code === "FOUNDING_MENTOR" || b.code === "VERIFIED_MENTOR" || connectionStatus === "approved")
+        : connectionStatus === "approved" ? allBadges : [];
+      
+      results.push({
+        matchId: match.id,
+        overlapScore: match.overlapScore,
+        event: {
+          id: event.id,
+          title: event.name,
+          startAt: event.date,
+          location: event.location,
+        },
+        person: {
+          ...profile,
+          connectionStatus: connectionStatus as "none" | "pending" | "approved",
+          badges: visibleBadges,
+        },
+      });
+    }
+    
+    return results;
+  }
+
+  // Get suggested mentors (interest-based, no shared event required)
+  async getSuggestedMentors(userId: string): Promise<UserProfileWithBadges[]> {
+    const user = await this.getUser(userId);
+    if (!user || user.role !== "mentee") return [];
+    
+    const mentors = await db
+      .select()
+      .from(users)
+      .where(eq(users.role, "mentor"));
+    
+    // Calculate overlap scores and sort
+    const mentorsWithScores: { mentor: User; score: number }[] = [];
+    
+    for (const mentor of mentors) {
+      const score = await this.computeOverlapScore(userId, mentor.id);
+      mentorsWithScores.push({ mentor, score });
+    }
+    
+    // Sort by score descending, take top 20
+    mentorsWithScores.sort((a, b) => b.score - a.score);
+    const topMentors = mentorsWithScores.slice(0, 20);
+    
+    const results: UserProfileWithBadges[] = [];
+    
+    for (const { mentor, score } of topMentors) {
+      const { password, ...profile } = mentor;
+      
+      const connection = await this.getConnectionBetweenUsers(userId, mentor.id);
+      const connectionStatus = connection?.status === "approved" 
+        ? "approved" 
+        : connection?.status === "pending" 
+          ? "pending" 
+          : "none";
+      
+      const allBadges = await this.getUserBadges(mentor.id);
+      const visibleBadges = allBadges.filter(b => 
+        b.code === "FOUNDING_MENTOR" || 
+        b.code === "VERIFIED_MENTOR" ||
+        connectionStatus === "approved"
+      );
+      
+      results.push({
+        ...profile,
+        connectionStatus: connectionStatus as "none" | "pending" | "approved",
+        badges: visibleBadges,
+      });
+    }
+    
+    return results;
   }
 
   // Badge operations

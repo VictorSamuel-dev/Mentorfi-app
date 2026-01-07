@@ -1,0 +1,82 @@
+Implement “Unlocked Matches” logic for Mentorfy using our current stack (Express TS + Postgres + Drizzle + session auth + TanStack Query).
+
+GOAL
+1) “New Matches” tab should ONLY show mentors who are “unlocked” by a shared event RSVP:
+   - mentee RSVP’d to an event (going)
+   - mentor RSVP’d to the same event (going)
+   - plus interest overlap score >= threshold (start threshold = 2 shared interests)
+2) “Browse Mentors” should show “Suggested” mentors based on interest overlap only (no shared event required).
+3) Never show interest-only suggestions in “New Matches.”
+
+DATABASE (Drizzle)
+A) In server/db/schema.ts (or wherever the drizzle schema lives), ensure tables exist or add them:
+- users: id, role ('mentee'|'mentor'), name, headline, avatarUrl, school, company, etc.
+- events: id, title, startAt, location, organizer, tags (json/text)
+- rsvps: id, userId, eventId, status ('going'|'not_going'), createdAt
+  * add UNIQUE(userId, eventId)
+- userInterests: id, userId, interest (text)
+  * add UNIQUE(userId, interest)
+- connections: id, menteeId, mentorId, status ('pending'|'approved'|'rejected'), createdAt
+  * add UNIQUE(menteeId, mentorId)
+- matches: id, menteeId, mentorId, eventId, overlapScore (int), createdAt
+  * add UNIQUE(menteeId, mentorId, eventId)
+
+Run migrations/Drizzle push as needed.
+
+MATCHING LOGIC
+B) Create a server service: server/services/matching.ts
+- function computeOverlapScore(menteeId, mentorId): returns # of shared interests
+- function upsertEventMatchForUser(eventId):
+   - find all mentee RSVPs with status='going' for eventId
+   - find all mentor RSVPs with status='going' for eventId
+   - for each mentee x mentor, compute overlapScore
+   - if overlapScore >= 2, upsert into matches table with (menteeId, mentorId, eventId, overlapScore)
+
+C) Hook the match generation into RSVP creation:
+- In the RSVP endpoint (POST /api/rsvps or whatever exists):
+   - after inserting/updating RSVP to status='going', call upsertEventMatchForUser(eventId)
+   - ensure this is idempotent and won’t create duplicates (use unique constraint + upsert)
+
+API ENDPOINTS
+D) Add endpoints in server/routes (where routes live):
+1) GET /api/matches/new
+   - uses session user id + role
+   - if mentee: return mentors that are in matches where matches.menteeId = sessionUserId
+   - if mentor: return mentees where matches.mentorId = sessionUserId
+   - join users + events to return:
+     { matchId, overlapScore, event: {id,title,startAt,location}, person: {id,name,headline,avatarUrl,company,school} }
+   - sort by createdAt desc
+
+2) GET /api/mentors/suggested
+   - only for mentees (role check)
+   - return mentors ranked by overlapScore computed from interests
+   - do NOT require shared event
+   - return top 20
+   - label these as “Suggested” client-side (not “Match”)
+
+FRONTEND
+E) In client/src/pages/Matches.tsx (or relevant component):
+- “New Matches” tab uses TanStack Query calling GET /api/matches/new
+- Render cards with:
+  - Mentor info
+  - “Unlocked at: [Event Title]” + date/location
+  - “Shared interests: X” (optional)
+- Empty state copy:
+  “No unlocked matches yet. Matches unlock when you and a mentor RSVP to the same event.”
+
+- “Browse Mentors” tab uses GET /api/mentors/suggested
+  - Show same ProfileCard but add a small badge/label “Suggested” (not “Match”)
+
+QA / SEED
+F) Add a small seed helper (or update existing seed):
+- Create 1 event
+- Create 1 mentee + 1 mentor
+- Add overlapping interests (at least 2)
+- Add RSVPs for both to same event
+- Verify “New Matches” now shows 1 unlocked match
+- Remove mentor RSVP or reduce overlap <2 and confirm it disappears from “New Matches” but can still appear as “Suggested” in Browse Mentors.
+
+IMPORTANT
+- Respect session auth: never accept userId from client for these endpoints; always use req.session user.
+- Keep the code minimal but production-safe (input validation with Zod where used).
+- Confirm endpoints are wired to router and TanStack Query hooks compile.

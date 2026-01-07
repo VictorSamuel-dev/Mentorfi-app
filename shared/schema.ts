@@ -154,6 +154,24 @@ export const insertUserBadgeSchema = createInsertSchema(userBadges).omit({
 export type InsertUserBadge = z.infer<typeof insertUserBadgeSchema>;
 export type UserBadge = typeof userBadges.$inferSelect;
 
+// Matches table - tracks unlocked mentor-mentee matches from shared event RSVPs
+export const matches = pgTable("matches", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  menteeId: varchar("mentee_id").notNull().references(() => users.id),
+  mentorId: varchar("mentor_id").notNull().references(() => users.id),
+  eventId: integer("event_id").notNull().references(() => events.id),
+  overlapScore: integer("overlap_score").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMatchSchema = createInsertSchema(matches).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMatch = z.infer<typeof insertMatchSchema>;
+export type Match = typeof matches.$inferSelect;
+
 // Extended types for frontend use
 export interface EventWithAttendees extends Event {
   attendeeCount: number;
@@ -170,6 +188,18 @@ export interface MatchData {
   event: Event;
   sharedInterests: string[];
   sharedCompany?: string;
+}
+
+export interface UnlockedMatchData {
+  matchId: number;
+  overlapScore: number;
+  event: {
+    id: number;
+    title: string;
+    startAt: Date | null;
+    location: string;
+  };
+  person: UserProfileWithBadges;
 }
 
 export interface ConversationData {
