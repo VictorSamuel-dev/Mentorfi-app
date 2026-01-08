@@ -7,9 +7,16 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">M</span>
-              </div>
+              <img 
+                src="/branding/logo/mentorfy-logo.svg" 
+                alt="Mentorfy" 
+                className="h-8 w-8 dark:hidden"
+              />
+              <img 
+                src="/branding/logo/mentorfy-logo-dark.svg" 
+                alt="Mentorfy" 
+                className="h-8 w-8 hidden dark:block"
+              />
               <span className="font-semibold text-lg">Mentorfy</span>
             </div>
             <p className="text-sm text-muted-foreground">
