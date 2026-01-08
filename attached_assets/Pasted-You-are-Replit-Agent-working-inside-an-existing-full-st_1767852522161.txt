@@ -1,0 +1,163 @@
+You are Replit Agent working inside an existing full-stack repo. Your job is to implement the Mentorfy MVP in the current codebase using the existing stack (Express + TypeScript + Postgres + Drizzle + sessions). IMPORTANT: First inspect the repo and reuse existing patterns/components/routes; do not rewrite architecture.
+
+HIGH-LEVEL GOAL (MVP):
+Enable permissioned, time-bounded, event-based mentorship:
+- Two roles: mentor and mentee
+- Manual events + RSVP
+- Matching ONLY via shared event attendance + interest overlap + mentor capacity
+- Mentee requests connection; mentor must approve before messaging/identity reveal
+- Messaging is limited (caps enforced server-side)
+- Commitment enforcement (max connections per quarter)
+- Founding Mentor badge (manual assignment)
+- Minimal email notifications (can be stubbed to console in dev)
+- Basic internal metrics endpoint (admin-only)
+
+SCOPE GUARDRAILS (DO NOT BUILD YET):
+No Eventbrite API, no Stripe/subscriptions, no OAuth (LinkedIn/Google), no push notifications, no AI matching, no university/enterprise dashboards, no infinite feeds, no mobile app.
+
+STEP 0 — DISCOVERY (MUST DO FIRST)
+1) Read repository structure and identify:
+   - existing auth implementation (sessions, password hashing, user model)
+   - db folder + Drizzle config + migrations/push workflow
+   - existing API route conventions, validation approach (Zod?), error handling
+   - frontend framework and state/data fetching patterns (e.g., React + TanStack Query)
+2) List what already exists and what is missing, then proceed to implement missing items incrementally.
+
+STEP 1 — DATABASE SCHEMA (Drizzle + Postgres)
+Implement/extend schema with these tables and enums (adapt to existing naming):
+- users: id, email (unique), passwordHash, role (mentor|mentee|admin), planTier (free), createdAt, updatedAt
+- profiles: userId (PK/FK), shared fields (fullName, headline, bio, location), mentor fields (title, company, industry), mentee fields (school, program, gradYear, careerGoal, resumeUrl), mentor preferences (availabilityMode event_only|quarterly|monthly, maxConnectionsPerQuarter default 2, requiredMaterials json, preferredFormats json)
+- user_interests: userId + interest (unique per user)
+- events: title, type, startAt, location, hostOrg, tags json, createdBy
+- rsvps: userId + eventId unique, status going|not_going
+- matches: menteeId + mentorId + eventId unique, overlapScore
+- requests: menteeId, mentorId, eventId nullable, status pending|approved|declined, message, materials json, createdAt, decidedAt
+- connections: menteeId + mentorId + eventId unique, requestId
+- messages: connectionId, senderId, body, createdAt
+- badges: key (unique), name, description, svg optional
+- user_badges: userId + badgeId unique
+Add indexes for common lookups: requests(mentorId,status), matches(eventId), rsvps(eventId), messages(connectionId).
+
+Run drizzle migrations/push as appropriate and ensure app boots.
+
+STEP 2 — AUTH + ROLE MIDDLEWARE
+- Ensure signup/login/logout exists. If missing, implement email+password with secure hashing (bcrypt/argon2) and session cookies.
+- Add middleware: requireAuth, requireRole, and optional requireAdmin.
+- Add GET /api/me returning user + role + profile summary.
+
+STEP 3 — PROFILE & ONBOARDING
+- Implement endpoints:
+  - GET /api/profile (current user)
+  - PATCH /api/profile (role-aware updates)
+  - PUT /api/interests (replace list; normalize lowercase/trim)
+- Frontend:
+  - onboarding screens for role selection and minimal profile fields
+  - mentor preferences UI (commitment, formats, required materials)
+  - mentee basics + resume URL input
+
+STEP 4 — EVENTS (MANUAL)
+- Admin-only event creation/edit:
+  - POST /api/events
+  - PATCH /api/events/:id
+- Public list/detail:
+  - GET /api/events
+  - GET /api/events/:id (include attendee count by role, not identities)
+- RSVP:
+  - POST /api/events/:id/rsvp with status
+  - GET /api/events/:id/rsvp (current user)
+Frontend:
+  - events list + details page
+  - RSVP button for mentors/mentees
+
+STEP 5 — MATCHING (EVENT-ONLY)
+Implement match generation and retrieval:
+- Rule: match exists only if mentor and mentee RSVP’d “going” to same event AND interest overlapScore >= 2 (configurable) AND mentor has capacity remaining.
+- Implement idempotent upsert for matches on RSVP changes:
+  - On RSVP to going: recompute matches for that event involving that user.
+  - On RSVP to not_going: remove matches for that user and that event.
+Endpoints:
+  - GET /api/matches (for mentee: list mentors for events they’re attending; for mentor: list potential mentees or just show “requests” only depending on UI)
+IMPORTANT PRIVACY:
+- Before approval, mentee should see limited mentor identity (e.g., title/company/industry + badge, but not email and not direct messaging).
+- Use a server-side “view model” response that hides sensitive fields unless approved.
+
+STEP 6 — REQUESTS + APPROVAL GATE (NON-NEGOTIABLE)
+Endpoints:
+- POST /api/requests { mentorId, eventId, message, materials } (mentee only)
+  - Validate that a match exists for mentee/mentor/event.
+  - Prevent duplicate pending requests.
+- GET /api/requests?status=pending|approved|declined (mentor sees inbound; mentee sees outbound)
+- POST /api/requests/:id/approve (mentor only)
+  - Enforce mentor capacity before approving.
+  - Create connection row (or upsert).
+  - Mark request approved + decidedAt.
+- POST /api/requests/:id/decline (mentor only)
+  - Mark declined + decidedAt.
+Frontend:
+- Mentee: “Request connection” button from event mentor list
+- Mentor: Requests inbox with Approve/Decline
+- After approval: mentee can view full mentor profile and messaging unlocks
+
+STEP 7 — CONNECTIONS + MESSAGING (LIMITED)
+Endpoints:
+- GET /api/connections (list connections for current user)
+- GET /api/connections/:id/messages
+- POST /api/connections/:id/messages
+Server-side enforcement:
+- Allow messaging only if connection exists AND user is mentor/mentee in it.
+- Message cap (MVP): free tier max 10 messages per connection within 14 days since connection created.
+  - Implement a function to compute remaining messages and block with 429 + friendly error.
+Frontend:
+- Simple chat UI for approved connections
+- Show remaining messages and upgrade CTA placeholder (no payments)
+
+STEP 8 — COMMITMENT ENFORCEMENT (CAPACITY)
+- Mentor profile includes maxConnectionsPerQuarter.
+- Implement “current quarter approved connections count” and enforce:
+  - Block new approvals if capacity reached (recommended).
+  - Also optionally hide mentor from new matches if capacity reached.
+Use Postgres date functions or compute quarter ranges in app code.
+
+STEP 9 — FOUNDING MENTOR BADGE (MANUAL)
+- Seed badges with key "founding_mentor".
+- Admin endpoint:
+  - POST /api/admin/users/:id/badges/founding_mentor (assign)
+- Show badge:
+  - Mentor sees on their profile
+  - Mentee sees badge on mentor card and mentor profile (especially after approval)
+
+STEP 10 — EMAIL NOTIFICATIONS (MINIMAL)
+Implement a notification service:
+- New request -> email mentor
+- Request approved -> email mentee
+- New message -> email recipient (rate-limit)
+MVP: if no email provider configured, log to console with recipient + subject + body.
+Do not block flows if email fails.
+
+STEP 11 — METRICS (ADMIN-ONLY)
+Endpoint: GET /api/admin/metrics returning counts:
+- events, rsvps, matches, requests by status, connections, messages
+Frontend: optional simple admin page or just endpoint.
+
+STEP 12 — SEED DATA + SMOKE TESTS
+- Add a seed script that creates:
+  - one admin (me), 2 mentors, 2 mentees, 2 events, interests, RSVPs
+- Add minimal automated tests OR a documented “smoke test” checklist and a script to run it:
+  1) mentor+mentee signup
+  2) create event (admin)
+  3) both RSVP going
+  4) mentee sees mentor in event matches
+  5) mentee sends request
+  6) mentor approves
+  7) messaging unlocks
+  8) message cap enforced
+  9) capacity enforced when set to 1
+
+DELIVERABLES
+1) Working MVP end-to-end with UI flows for mentor and mentee.
+2) All endpoints implemented with validation and role checks.
+3) Updated Drizzle schema + migrations.
+4) Seed script + smoke test steps.
+5) Brief README section: “MVP flows” and “How to run locally / in Replit”.
+
+Proceed now: inspect the repo first, then implement in the order above, committing changes incrementally and keeping the app runnable after each step.
