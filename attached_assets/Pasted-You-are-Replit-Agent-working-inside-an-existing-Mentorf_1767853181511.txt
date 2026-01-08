@@ -1,0 +1,115 @@
+You are Replit Agent working inside an existing Mentorfy repo. IMPORTANT: Do NOT refactor or rewrite existing working flows. Only implement the missing/incomplete items listed below, reusing existing patterns, routes, validation, and UI components. Keep the app runnable after each step.
+
+CONTEXT (already implemented and must remain working):
+- Auth (register/login/logout/sessions)
+- Tables exist: Users, Events, RSVPs, Connections, Messages, Badges, Matches
+- Event-based matching with overlap score
+- Gated messaging (2 message limit for free users)
+- Connection request/approve/decline flow
+- Badge award/revoke (admin-only)
+
+MISSING/INCOMPLETE ITEMS TO IMPLEMENT (ONLY THESE):
+1) Mentor capacity enforcement (maxConnectionsPerQuarter)
+2) Detailed profiles (mentee: school/program/gradYear; mentor preferences)
+3) Admin-only event creation/edit (currently any user can create events)
+4) RSVP status as going/not_going (not just a toggle)
+5) Email notifications (console stub OK)
+6) Admin metrics endpoint (more than basic event count)
+
+STEP 0 — INSPECT
+- Identify current schema definitions (Drizzle), existing tables/columns, and route handlers.
+- Identify how roles/admin are represented (users.role or isAdmin).
+- Identify current RSVP model (toggle or status).
+- Identify current request approval endpoint and where to enforce capacity.
+- Identify frontend screens for profile, events, requests, messaging.
+
+STEP 1 — DB CHANGES (MINIMAL MIGRATION)
+A) Add mentor capacity + preferences:
+- If profiles table exists, add:
+  - maxConnectionsPerQuarter INT DEFAULT 2
+  - preferredFormats JSON default []
+  - requiredMaterials JSON default {}
+  - availabilityMode (string/enum) default "event_only" (optional)
+- Add mentee fields:
+  - school TEXT/VARCHAR
+  - program TEXT/VARCHAR
+  - gradYear INT
+- If no profiles table exists, create one keyed by userId, but prefer extending existing structures.
+
+B) RSVP status:
+- Ensure rsvps table has a status field ("going" | "not_going").
+- If it already exists, verify the code uses it; if not, update code.
+
+Run drizzle migration/push appropriately without breaking existing data.
+
+STEP 2 — ADMIN-ONLY EVENT CREATION
+- Enforce admin-only access on:
+  - POST /api/events
+  - PATCH /api/events/:id
+- If role is users.role, require role === "admin".
+- If isAdmin boolean exists, require it.
+- Update frontend to hide/disable create/edit event UI for non-admin users.
+- Ensure all users can still view events and RSVP.
+
+STEP 3 — RSVP STATUS ENDPOINT
+- Implement/adjust RSVP endpoint to accept explicit status:
+  - POST /api/events/:id/rsvp with body { status: "going" | "not_going" }
+- Use upsert: if RSVP row exists, update status; else insert.
+- Ensure event detail returns:
+  - attendeeGoingCount
+  - attendeeNotGoingCount (optional)
+- Update UI to present a clear RSVP control (Going / Not going), not a single toggle.
+
+STEP 4 — PROFILES + ONBOARDING FIELDS
+- Implement GET /api/profile and PATCH /api/profile if not present, or extend existing.
+- Add validation:
+  - Mentee: school, program, gradYear required for MVP (or required before sending requests)
+  - Mentor: title, company, industry + preferences (formats, materials, maxConnectionsPerQuarter)
+- Update UI/profile screen to collect and edit these fields.
+- Add a minimal “profile completeness” guard:
+  - Block mentee from sending a request if school/program/gradYear missing, with a friendly message and link to profile.
+
+STEP 5 — MENTOR CAPACITY ENFORCEMENT
+- Add maxConnectionsPerQuarter to mentor profile (default 2).
+- On request approval endpoint:
+  - Compute current quarter start/end (based on server time).
+  - Count mentor’s connections created within that quarter.
+  - If count >= maxConnectionsPerQuarter, block approval with HTTP 409 and message:
+    "You’re at your mentoring capacity for this quarter."
+- Optional (nice-to-have): remove/hide mentors at capacity from match lists.
+
+STEP 6 — EMAIL NOTIFICATIONS (CONSOLE STUB OK)
+- Create a notification service with function notify(to, subject, body).
+- If EMAIL_PROVIDER env vars not configured, log to console (recipient + subject + body).
+- Trigger notifications:
+  - When request created: notify mentor
+  - When request approved: notify mentee
+  - When new message sent: notify recipient (basic; can skip if noisy)
+
+STEP 7 — ADMIN METRICS ENDPOINT
+- Add GET /api/admin/metrics (admin-only) returning JSON:
+  - usersCount
+  - eventsCount
+  - rsvpsGoingCount
+  - rsvpsNotGoingCount
+  - matchesCount
+  - requestsPendingCount
+  - requestsApprovedCount
+  - requestsDeclinedCount
+  - connectionsCount
+  - messagesCount
+
+STEP 8 — SMOKE TESTS
+Add a short DEV-only seed script or documented steps to verify:
+1) Non-admin cannot create events (403)
+2) Admin can create events
+3) RSVP going/not_going works and counts update
+4) Mentee cannot request connection until profile fields are completed
+5) Mentor approval blocked when capacity reached (set maxConnectionsPerQuarter=1 and test)
+6) Notifications log to console on request created/approved
+7) /api/admin/metrics returns expected counts
+
+DELIVERABLE:
+- All above implemented with minimal changes, no refactors, and no breaking existing matching/request/messaging flows.
+- Keep UI consistent with existing style/components.
+Proceed now.

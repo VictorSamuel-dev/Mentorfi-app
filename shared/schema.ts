@@ -19,6 +19,14 @@ export const users = pgTable("users", {
   isVerified: boolean("is_verified").default(false),
   isPremium: boolean("is_premium").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  // Mentee-specific fields
+  school: text("school"),
+  program: text("program"),
+  gradYear: integer("grad_year"),
+  // Mentor-specific fields
+  maxConnectionsPerQuarter: integer("max_connections_per_quarter").default(2),
+  preferredFormats: jsonb("preferred_formats").default([]),
+  requiredMaterials: jsonb("required_materials").default({}),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -32,6 +40,12 @@ export const insertUserSchema = createInsertSchema(users).pick({
   interests: true,
   targetCompanies: true,
   profileImageUrl: true,
+  school: true,
+  program: true,
+  gradYear: true,
+  maxConnectionsPerQuarter: true,
+  preferredFormats: true,
+  requiredMaterials: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -64,8 +78,11 @@ export const eventRsvps = pgTable("event_rsvps", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   userId: varchar("user_id").notNull().references(() => users.id),
   eventId: integer("event_id").notNull().references(() => events.id),
+  status: text("status").notNull().default("going"), // "going", "not_going"
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("event_rsvps_user_event_idx").on(table.userId, table.eventId),
+]);
 
 export const insertEventRsvpSchema = createInsertSchema(eventRsvps).omit({
   id: true,

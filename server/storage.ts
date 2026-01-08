@@ -54,10 +54,28 @@ export interface IStorage {
   
   // RSVP operations
   createRsvp(rsvp: InsertEventRsvp): Promise<EventRsvp>;
+  upsertRsvp(userId: string, eventId: number, status: string): Promise<EventRsvp>;
   deleteRsvp(userId: string, eventId: number): Promise<void>;
   getUserRsvps(userId: string): Promise<EventRsvp[]>;
   getEventAttendees(eventId: number): Promise<User[]>;
   getEventVisibleAttendees(eventId: number, viewerId: string): Promise<EventAttendeesResponse>;
+  
+  // Mentor capacity
+  getMentorApprovedConnectionsInQuarter(mentorId: string): Promise<number>;
+  
+  // Admin metrics
+  getAdminMetrics(): Promise<{
+    usersCount: number;
+    eventsCount: number;
+    rsvpsGoingCount: number;
+    rsvpsNotGoingCount: number;
+    matchesCount: number;
+    requestsPendingCount: number;
+    requestsApprovedCount: number;
+    requestsDeclinedCount: number;
+    connectionsCount: number;
+    messagesCount: number;
+  }>;
   
   // Connection operations
   createConnection(connection: InsertConnection): Promise<Connection>;
@@ -181,6 +199,18 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async upsertRsvp(userId: string, eventId: number, status: string): Promise<EventRsvp> {
+    const result = await db
+      .insert(eventRsvps)
+      .values({ userId, eventId, status })
+      .onConflictDoUpdate({
+        target: [eventRsvps.userId, eventRsvps.eventId],
+        set: { status },
+      })
+      .returning();
+    return result[0];
+  }
+
   async deleteRsvp(userId: string, eventId: number): Promise<void> {
     await db
       .delete(eventRsvps)
@@ -189,6 +219,58 @@ export class DatabaseStorage implements IStorage {
 
   async getUserRsvps(userId: string): Promise<EventRsvp[]> {
     return db.select().from(eventRsvps).where(eq(eventRsvps.userId, userId));
+  }
+
+  // Mentor capacity - count approved connections for this quarter (UTC-based)
+  async getMentorApprovedConnectionsInQuarter(mentorId: string): Promise<number> {
+    const now = new Date();
+    const utcYear = now.getUTCFullYear();
+    const utcMonth = now.getUTCMonth();
+    const quarter = Math.floor(utcMonth / 3);
+    const quarterStart = new Date(Date.UTC(utcYear, quarter * 3, 1, 0, 0, 0, 0));
+    const quarterEnd = new Date(Date.UTC(utcYear, (quarter + 1) * 3, 1, 0, 0, 0, 0));
+
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(connections)
+      .where(
+        and(
+          eq(connections.toUserId, mentorId),
+          eq(connections.status, "approved"),
+          sql`${connections.approvedAt} >= ${quarterStart.toISOString()}`,
+          sql`${connections.approvedAt} < ${quarterEnd.toISOString()}`
+        )
+      );
+    return Number(result[0]?.count || 0);
+  }
+
+  // Admin metrics
+  async getAdminMetrics() {
+    const [usersResult, eventsResult, goingResult, notGoingResult, matchesResult, pendingResult, approvedResult, declinedResult, connectionsResult, messagesResult] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` }).from(users),
+      db.select({ count: sql<number>`count(*)` }).from(events),
+      db.select({ count: sql<number>`count(*)` }).from(eventRsvps).where(eq(eventRsvps.status, "going")),
+      db.select({ count: sql<number>`count(*)` }).from(eventRsvps).where(eq(eventRsvps.status, "not_going")),
+      db.select({ count: sql<number>`count(*)` }).from(matches),
+      db.select({ count: sql<number>`count(*)` }).from(connections).where(eq(connections.status, "pending")),
+      db.select({ count: sql<number>`count(*)` }).from(connections).where(eq(connections.status, "approved")),
+      db.select({ count: sql<number>`count(*)` }).from(connections).where(eq(connections.status, "declined")),
+      db.select({ count: sql<number>`count(*)` }).from(connections),
+      db.select({ count: sql<number>`count(*)` }).from(messages),
+    ]);
+
+    return {
+      usersCount: Number(usersResult[0]?.count || 0),
+      eventsCount: Number(eventsResult[0]?.count || 0),
+      rsvpsGoingCount: Number(goingResult[0]?.count || 0),
+      rsvpsNotGoingCount: Number(notGoingResult[0]?.count || 0),
+      matchesCount: Number(matchesResult[0]?.count || 0),
+      requestsPendingCount: Number(pendingResult[0]?.count || 0),
+      requestsApprovedCount: Number(approvedResult[0]?.count || 0),
+      requestsDeclinedCount: Number(declinedResult[0]?.count || 0),
+      connectionsCount: Number(connectionsResult[0]?.count || 0),
+      messagesCount: Number(messagesResult[0]?.count || 0),
+    };
   }
 
   async getEventAttendees(eventId: number): Promise<User[]> {

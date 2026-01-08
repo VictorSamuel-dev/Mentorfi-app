@@ -10,10 +10,30 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 // Message limit for free users
 const FREE_MESSAGE_LIMIT = 2;
 
+// Notification service (console stub for MVP)
+function notify(to: string, subject: string, body: string) {
+  console.log(`[NOTIFICATION] To: ${to}`);
+  console.log(`[NOTIFICATION] Subject: ${subject}`);
+  console.log(`[NOTIFICATION] Body: ${body}`);
+  console.log("---");
+}
+
 // Auth middleware
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.session?.userId) {
     return res.status(401).json({ error: "Authentication required" });
+  }
+  next();
+}
+
+// Admin middleware
+async function requireAdmin(req: Request, res: Response, next: Function) {
+  if (!req.session?.userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  const user = await storage.getUser(req.session.userId);
+  if (user?.role !== "admin") {
+    return res.status(403).json({ error: "Admin access required" });
   }
   next();
 }
@@ -116,7 +136,11 @@ export async function registerRoutes(
 
   app.patch("/api/users/profile", requireAuth, async (req, res) => {
     try {
-      const { firstName, lastName, company, jobTitle, interests, targetCompanies, profileImageUrl } = req.body;
+      const { 
+        firstName, lastName, company, jobTitle, interests, targetCompanies, profileImageUrl,
+        school, program, gradYear,
+        maxConnectionsPerQuarter, preferredFormats, requiredMaterials
+      } = req.body;
       
       const updated = await storage.updateUser(req.session.userId!, {
         firstName,
@@ -126,6 +150,12 @@ export async function registerRoutes(
         interests,
         targetCompanies,
         profileImageUrl,
+        school,
+        program,
+        gradYear,
+        maxConnectionsPerQuarter,
+        preferredFormats,
+        requiredMaterials,
       });
 
       if (!updated) {
@@ -182,7 +212,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/events", requireAuth, async (req, res) => {
+  app.post("/api/events", requireAdmin, async (req, res) => {
     try {
       const validated = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(validated);
@@ -200,16 +230,23 @@ export async function registerRoutes(
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.session.userId!;
+      const { status = "going" } = req.body;
+
+      if (!["going", "not_going"].includes(status)) {
+        return res.status(400).json({ error: "Status must be 'going' or 'not_going'" });
+      }
 
       const event = await storage.getEvent(eventId);
       if (!event) {
         return res.status(404).json({ error: "Event not found" });
       }
 
-      const rsvp = await storage.createRsvp({ userId, eventId });
+      const rsvp = await storage.upsertRsvp(userId, eventId, status);
       
-      // Generate matches for this event after RSVP
-      await storage.upsertEventMatchesForEvent(eventId);
+      // Generate matches for this event after RSVP (only if going)
+      if (status === "going") {
+        await storage.upsertEventMatchesForEvent(eventId);
+      }
       
       res.json(rsvp);
     } catch (error) {
@@ -308,6 +345,17 @@ export async function registerRoutes(
         status: "pending",
       });
 
+      // Send notification to mentor
+      const mentor = await storage.getUser(toUserId);
+      const mentee = await storage.getUser(fromUserId);
+      if (mentor?.email && mentee) {
+        notify(
+          mentor.email,
+          "New mentorship request!",
+          `${mentee.firstName || "A mentee"} has requested to connect with you. Log in to review and respond.`
+        );
+      }
+
       res.json(connection);
     } catch (error) {
       console.error("Create connection error:", error);
@@ -328,7 +376,31 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Not authorized" });
       }
 
+      // Check mentor capacity
+      const mentor = await storage.getUser(req.session.userId!);
+      const maxConnections = mentor?.maxConnectionsPerQuarter || 2;
+      const currentConnections = await storage.getMentorApprovedConnectionsInQuarter(req.session.userId!);
+      
+      if (currentConnections >= maxConnections) {
+        return res.status(409).json({ 
+          error: "You've reached your mentoring capacity for this quarter.",
+          currentConnections,
+          maxConnections
+        });
+      }
+
       const updated = await storage.updateConnectionStatus(connectionId, "approved");
+      
+      // Send notification to mentee
+      const mentee = await storage.getUser(connection.fromUserId);
+      if (mentee?.email) {
+        notify(
+          mentee.email,
+          "Your connection request was approved!",
+          `Great news! ${mentor?.firstName || "Your mentor"} has approved your connection request. You can now start messaging.`
+        );
+      }
+      
       res.json(updated);
     } catch (error) {
       console.error("Approve connection error:", error);
@@ -660,6 +732,17 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Admin stats error:", error);
       res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // Comprehensive admin metrics endpoint
+  app.get("/api/admin/metrics", requireAdmin, async (req, res) => {
+    try {
+      const metrics = await storage.getAdminMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Admin metrics error:", error);
+      res.status(500).json({ error: "Failed to fetch metrics" });
     }
   });
 
