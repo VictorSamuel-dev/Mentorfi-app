@@ -53,7 +53,7 @@ export function Footer() {
         </div>
         
         <div className="border-t pt-8 text-center text-sm text-muted-foreground">
-          <p>2024 Mentorfy. All rights reserved.</p>
+          <p>2026 Mentorfy. All rights reserved.</p>
         </div>
       </div>
     </footer>
