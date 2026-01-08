@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -7,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventCard } from "@/components/EventCard";
 import { MatchNotification } from "@/components/MatchNotification";
+import { ProfileDialog, type ProfileDialogData } from "@/components/ProfileDialog";
+import { EventDetailsDialog } from "@/components/EventDetailsDialog";
 import { Link, useLocation } from "wouter";
 import { Calendar, Users, MessageSquare, ArrowRight, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getEvents, getMatches, getConversations } from "@/lib/api";
-import type { EventWithAttendees, MatchData, ConversationData } from "@shared/schema";
+import type { EventWithAttendees, MatchData, ConversationData, Event } from "@shared/schema";
 
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -34,6 +37,68 @@ export default function Dashboard() {
     queryFn: getConversations,
     enabled: !!user,
   });
+
+  const [selectedProfile, setSelectedProfile] = useState<ProfileDialogData | null>(null);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+
+  const handleViewProfile = (userId: string) => {
+    const match = matches.find(m => m.matchedUser.id === userId);
+    if (match) {
+      setSelectedProfile({
+        id: match.matchedUser.id,
+        firstName: match.matchedUser.firstName,
+        lastName: match.matchedUser.lastName,
+        email: null,
+        role: match.matchedUser.role,
+        company: match.matchedUser.company || null,
+        jobTitle: match.matchedUser.jobTitle || null,
+        interests: match.matchedUser.interests || null,
+        targetCompanies: match.matchedUser.targetCompanies || null,
+        profileImageUrl: match.matchedUser.profileImageUrl || null,
+        isPremium: null,
+        badges: match.matchedUser.badges,
+        connectionStatus: match.matchedUser.connectionStatus || "none",
+      });
+      setProfileDialogOpen(true);
+    }
+  };
+
+  const handleViewEvent = (eventId: number) => {
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      setSelectedEvent(event as Event);
+      setEventDialogOpen(true);
+    } else {
+      const match = matches.find(m => m.event.id === eventId);
+      if (match) {
+        setSelectedEvent({
+          id: match.event.id,
+          name: match.event.name,
+          date: match.event.date,
+          description: null,
+          location: "",
+          isVirtual: false,
+          type: "career_fair",
+          company: null,
+          industry: null,
+          createdAt: null,
+        } as Event);
+        setEventDialogOpen(true);
+      }
+    }
+  };
+
+  const handleConnect = (userId: string) => {
+    setProfileDialogOpen(false);
+    setLocation("/matches");
+  };
+
+  const handleMessage = (userId: string) => {
+    setProfileDialogOpen(false);
+    setLocation("/messages");
+  };
 
   if (authLoading) {
     return null;
@@ -156,7 +221,10 @@ export default function Dashboard() {
               ) : (
                 <MatchNotification
                   match={{
-                    ...matches[0],
+                    id: String(matches[0].id),
+                    event: matches[0].event,
+                    sharedInterests: matches[0].sharedInterests,
+                    sharedCompany: matches[0].sharedCompany,
                     matchedUser: {
                       id: matches[0].matchedUser.id || "",
                       firstName: matches[0].matchedUser.firstName || "",
@@ -165,10 +233,11 @@ export default function Dashboard() {
                       company: matches[0].matchedUser.company || undefined,
                       jobTitle: matches[0].matchedUser.jobTitle || undefined,
                       profileImageUrl: matches[0].matchedUser.profileImageUrl || undefined,
+                      badges: matches[0].matchedUser.badges,
                     },
                   }}
-                  onViewProfile={() => {}}
-                  onViewEvent={() => {}}
+                  onViewProfile={handleViewProfile}
+                  onViewEvent={handleViewEvent}
                 />
               )}
 
@@ -203,6 +272,23 @@ export default function Dashboard() {
       </main>
       
       <Footer />
+
+      {selectedProfile && (
+        <ProfileDialog
+          profile={selectedProfile}
+          open={profileDialogOpen}
+          onOpenChange={setProfileDialogOpen}
+          onConnect={handleConnect}
+          onMessage={handleMessage}
+        />
+      )}
+
+      <EventDetailsDialog
+        event={selectedEvent}
+        open={eventDialogOpen}
+        onOpenChange={setEventDialogOpen}
+        isAuthenticated={!!user}
+      />
     </div>
   );
 }
