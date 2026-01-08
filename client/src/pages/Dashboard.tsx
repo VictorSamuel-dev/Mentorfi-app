@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,8 @@ import { EventDetailsDialog } from "@/components/EventDetailsDialog";
 import { Link, useLocation } from "wouter";
 import { Calendar, Users, MessageSquare, ArrowRight, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { getEvents, getMatches, getConversations } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { getEvents, getMatches, getConversations, cancelRsvp, rsvpToEvent } from "@/lib/api";
 import type { EventWithAttendees, MatchData, ConversationData, Event } from "@shared/schema";
 
 export default function Dashboard() {
@@ -42,6 +44,46 @@ export default function Dashboard() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const rsvpMutation = useMutation({
+    mutationFn: async ({ eventId, isAttending }: { eventId: number; isAttending: boolean }) => {
+      if (isAttending) {
+        await cancelRsvp(eventId);
+      } else {
+        await rsvpToEvent(eventId);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      toast({
+        title: "RSVP Updated",
+        description: "Your RSVP status has been updated.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update RSVP. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRSVP = (eventId: number) => {
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      rsvpMutation.mutate({ eventId, isAttending: event.isAttending });
+    }
+  };
+
+  const handleEventViewDetails = (eventId: number) => {
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      setSelectedEvent(event as Event);
+      setEventDialogOpen(true);
+    }
+  };
 
   const handleViewProfile = (userId: string) => {
     const match = matches.find(m => m.matchedUser.id === userId);
@@ -189,8 +231,8 @@ export default function Dashboard() {
                         industry: event.industry || [],
                         isVirtual: event.isVirtual ?? false,
                       }}
-                      onRSVP={() => {}}
-                      onViewDetails={() => {}}
+                      onRSVP={handleRSVP}
+                      onViewDetails={handleEventViewDetails}
                     />
                   ))}
                 </div>
