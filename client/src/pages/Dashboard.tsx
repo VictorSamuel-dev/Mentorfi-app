@@ -15,8 +15,8 @@ import { Link, useLocation } from "wouter";
 import { Calendar, Users, MessageSquare, ArrowRight, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { getEvents, getMatches, getConversations, cancelRsvp, rsvpToEvent } from "@/lib/api";
-import type { EventWithAttendees, MatchData, ConversationData, Event } from "@shared/schema";
+import { getEvents, getUnlockedMatches, getConversations, cancelRsvp, rsvpToEvent } from "@/lib/api";
+import type { EventWithAttendees, UnlockedMatchData, ConversationData, Event } from "@shared/schema";
 
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -28,9 +28,9 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  const { data: matches = [], isLoading: matchesLoading } = useQuery<MatchData[]>({
-    queryKey: ["/api/matches"],
-    queryFn: getMatches,
+  const { data: matches = [], isLoading: matchesLoading } = useQuery<UnlockedMatchData[]>({
+    queryKey: ["/api/matches/new"],
+    queryFn: getUnlockedMatches,
     enabled: !!user,
   });
 
@@ -86,22 +86,22 @@ export default function Dashboard() {
   };
 
   const handleViewProfile = (userId: string) => {
-    const match = matches.find(m => m.matchedUser.id === userId);
+    const match = matches.find(m => m.person.id === userId);
     if (match) {
       setSelectedProfile({
-        id: match.matchedUser.id,
-        firstName: match.matchedUser.firstName,
-        lastName: match.matchedUser.lastName,
+        id: match.person.id,
+        firstName: match.person.firstName,
+        lastName: match.person.lastName,
         email: null,
-        role: match.matchedUser.role,
-        company: match.matchedUser.company || null,
-        jobTitle: match.matchedUser.jobTitle || null,
-        interests: match.matchedUser.interests || null,
-        targetCompanies: match.matchedUser.targetCompanies || null,
-        profileImageUrl: match.matchedUser.profileImageUrl || null,
+        role: match.person.role,
+        company: match.person.company || null,
+        jobTitle: match.person.jobTitle || null,
+        interests: match.person.interests || null,
+        targetCompanies: match.person.targetCompanies || null,
+        profileImageUrl: match.person.profileImageUrl || null,
         isPremium: null,
-        badges: match.matchedUser.badges,
-        connectionStatus: match.matchedUser.connectionStatus || "none",
+        badges: match.person.badges,
+        connectionStatus: match.person.connectionStatus || "none",
       });
       setProfileDialogOpen(true);
     }
@@ -117,10 +117,10 @@ export default function Dashboard() {
       if (match) {
         setSelectedEvent({
           id: match.event.id,
-          name: match.event.name,
-          date: match.event.date,
+          name: match.event.title,
+          date: match.event.startAt || new Date(),
           description: null,
-          location: "",
+          location: match.event.location || "",
           isVirtual: false,
           type: "career_fair",
           company: null,
@@ -261,26 +261,35 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               ) : (
-                <MatchNotification
-                  match={{
-                    id: String(matches[0].id),
-                    event: matches[0].event,
-                    sharedInterests: matches[0].sharedInterests,
-                    sharedCompany: matches[0].sharedCompany,
-                    matchedUser: {
-                      id: matches[0].matchedUser.id || "",
-                      firstName: matches[0].matchedUser.firstName || "",
-                      lastName: matches[0].matchedUser.lastName || "",
-                      role: (matches[0].matchedUser.role as "mentor" | "mentee") || "mentor",
-                      company: matches[0].matchedUser.company || undefined,
-                      jobTitle: matches[0].matchedUser.jobTitle || undefined,
-                      profileImageUrl: matches[0].matchedUser.profileImageUrl || undefined,
-                      badges: matches[0].matchedUser.badges,
-                    },
-                  }}
-                  onViewProfile={handleViewProfile}
-                  onViewEvent={handleViewEvent}
-                />
+                <div className="space-y-3">
+                  {matches.slice(0, 3).map((match) => (
+                    <MatchNotification
+                      key={match.matchId}
+                      match={{
+                        id: String(match.matchId),
+                        event: {
+                          id: match.event.id,
+                          name: match.event.title,
+                          date: match.event.startAt ? new Date(match.event.startAt) : new Date(),
+                        },
+                        sharedInterests: match.person.interests || [],
+                        sharedCompany: match.person.company || undefined,
+                        matchedUser: {
+                          id: match.person.id || "",
+                          firstName: match.person.firstName || "",
+                          lastName: match.person.lastName || "",
+                          role: (match.person.role as "mentor" | "mentee") || "mentor",
+                          company: match.person.company || undefined,
+                          jobTitle: match.person.jobTitle || undefined,
+                          profileImageUrl: match.person.profileImageUrl || undefined,
+                          badges: match.person.badges,
+                        },
+                      }}
+                      onViewProfile={handleViewProfile}
+                      onViewEvent={handleViewEvent}
+                    />
+                  ))}
+                </div>
               )}
 
               <Card className="mt-4">
