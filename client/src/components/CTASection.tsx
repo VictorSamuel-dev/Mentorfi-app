@@ -9,8 +9,8 @@ export function CTASection() {
           Ready to Find Your Mentor?
         </h2>
         <p className="text-muted-foreground text-lg mb-8">
-          Join thousands of students who have connected with Fortune 500 professionals 
-          through career events. Your next opportunity is waiting.
+          Join thousands of students connecting with professionals through structured, 
+          intentional mentorship — on their terms.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button size="lg" className="gap-2" asChild data-testid="button-cta-signup">

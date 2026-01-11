@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -33,12 +34,13 @@ export default function Connections() {
     enabled: !!user,
   });
 
-  if (authLoading) {
-    return null;
-  }
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setLocation("/auth");
+    }
+  }, [authLoading, user, setLocation]);
 
-  if (!user) {
-    setLocation("/auth");
+  if (authLoading || !user) {
     return null;
   }
 

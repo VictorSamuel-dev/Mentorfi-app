@@ -1,0 +1,65 @@
+You are working in the Mentorfy codebase (Next.js/React UI). Goal: update marketing copy on the public homepage and footer so the product is NOT positioned as “event required.” Events should be framed as OPTIONAL context. Do not change routes or core functionality—only copy/text content and any labels in UI sections mentioned below.
+
+ACCEPTANCE CRITERIA
+- Homepage hero headline/subheadline no longer say “at your next career event” or “through shared event attendance.”
+- “How Mentorfy Works” section reframes Events as optional and matching as goals/interests first.
+- Metrics banner removes/renames “Career Events” to a neutral term (keep number but rename label).
+- CTA section copy removes “through career events.”
+- Footer tagline removes “through career events.”
+- No breaking layout, no missing translations/constants, no TypeScript errors.
+- Update any tests/snapshots if they exist. Run lint/typecheck and ensure build passes.
+
+COPY CHANGES (USE EXACT TEXT BELOW)
+
+1) HERO SECTION
+Replace headline with:
+"Connect with the Right Mentors — Intentionally"
+
+Replace subheadline/description with:
+"Mentorfy connects students and professionals through shared goals, interests, and optional event context — without cold outreach or open-ended commitments."
+
+Keep CTAs as-is ("Get Started", "Learn More") unless the current CTA text differs.
+
+2) “HOW MENTORFY WORKS” CARDS (or equivalent features grid)
+- Card currently titled "Discover Events" should become:
+Title: "Discover Opportunities (Optional)"
+Body: "Explore career events, info sessions, or mentoring moments that provide shared context — if and when relevant."
+
+- Card currently titled "Smart Matching" should become:
+Title: "Smart Matching"
+Body: "Get matched based on goals, interests, and availability — with event context when applicable."
+
+- Card currently titled "Intentional Networking" should update body to:
+"Focus on meaningful, purpose-driven connections — not random cold outreach."
+(Title can remain "Intentional Networking")
+
+Other cards can remain unchanged unless they mention “events” as required—if they do, rewrite them to keep events optional.
+
+3) METRICS BANNER (stats strip)
+If you have a stat like "100+ Career Events", rename the label to:
+"100+ Professional Touchpoints"
+(Keep the numeric value as-is.)
+
+4) CTA SECTION (“Ready to Find Your Mentor?”)
+Replace supporting sentence with:
+"Join thousands of students connecting with professionals through structured, intentional mentorship — on their terms."
+
+5) FOOTER TAGLINE
+Replace footer short description/tagline with:
+"Connecting students with professionals through intentional, structured mentorship."
+
+IMPLEMENTATION NOTES
+- Search for these phrases and replace where found on the public landing page/footer:
+"at your next career event"
+"through shared event attendance"
+"through career events"
+"Career Events"
+- Update only marketing/public page components (e.g., app/page.tsx, pages/index.tsx, components/Home*, Landing*, Footer*).
+- If copy is stored in a constants file or content object, update it there (preferred).
+- Ensure responsive layout still looks good (no overflow on small screens).
+
+DELIVERABLES
+- Provide a brief summary of files changed and what text was updated.
+- Confirm build/lint/typecheck results.
+
+Proceed now.

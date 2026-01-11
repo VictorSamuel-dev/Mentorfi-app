@@ -20,7 +20,7 @@ export function Footer() {
               <span className="font-semibold text-lg">Mentorfy</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Connecting students with Fortune 500 mentors through career events.
+              Connecting students with professionals through intentional, structured mentorship.
             </p>
           </div>
           

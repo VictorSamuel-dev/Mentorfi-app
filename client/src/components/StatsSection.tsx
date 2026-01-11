@@ -1,7 +1,7 @@
 const stats = [
   { value: "500+", label: "Active Mentors" },
   { value: "2,500+", label: "Students Connected" },
-  { value: "100+", label: "Career Events" },
+  { value: "100+", label: "Professional Touchpoints" },
   { value: "85%", label: "Match Success Rate" },
 ];
 

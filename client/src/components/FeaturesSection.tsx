@@ -4,13 +4,13 @@ import { Calendar, Users, MessageSquare, Shield, Sparkles, Target } from "lucide
 const features = [
   {
     icon: Calendar,
-    title: "Discover Events",
-    description: "Browse career fairs, info sessions, and workshops from Fortune 500 companies.",
+    title: "Discover Opportunities (Optional)",
+    description: "Explore career events, info sessions, or mentoring moments that provide shared context — if and when relevant.",
   },
   {
     icon: Sparkles,
     title: "Smart Matching",
-    description: "Get notified when mentors with shared interests are attending the same events.",
+    description: "Get matched based on goals, interests, and availability — with event context when applicable.",
   },
   {
     icon: Shield,
@@ -20,7 +20,7 @@ const features = [
   {
     icon: Target,
     title: "Intentional Networking",
-    description: "Focus on meaningful connections at events, not random cold outreach.",
+    description: "Focus on meaningful, purpose-driven connections — not random cold outreach.",
   },
   {
     icon: Users,

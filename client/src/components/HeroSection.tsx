@@ -13,11 +13,11 @@ export function HeroSection() {
       
       <div className="relative z-10 max-w-4xl mx-auto px-6 py-24 text-center">
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-          Connect with Fortune 500 Mentors at Your Next Career Event
+          Connect with the Right Mentors — Intentionally
         </h1>
         <p className="text-lg sm:text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-          Mentorfy bridges college students with professionals at top companies through 
-          shared event attendance. Build meaningful relationships before the event begins.
+          Mentorfy connects students and professionals through shared goals, interests, and 
+          optional event context — without cold outreach or open-ended commitments.
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
