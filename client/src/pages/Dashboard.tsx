@@ -16,7 +16,13 @@ import { Calendar, Users, MessageSquare, ArrowRight, Sparkles } from "lucide-rea
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { getEvents, getUnlockedMatches, getConversations, cancelRsvp, rsvpToEvent } from "@/lib/api";
-import type { EventWithAttendees, UnlockedMatchData, ConversationData, Event } from "@shared/schema";
+import type { EventWithAttendees, UnlockedMatchData, ConversationData, Event, Connection } from "@shared/schema";
+
+async function getApprovedConnections(): Promise<Connection[]> {
+  const res = await fetch("/api/connections/approved", { credentials: "include" });
+  if (!res.ok) throw new Error("Failed to fetch connections");
+  return res.json();
+}
 
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -37,6 +43,12 @@ export default function Dashboard() {
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery<ConversationData[]>({
     queryKey: ["/api/conversations"],
     queryFn: getConversations,
+    enabled: !!user,
+  });
+
+  const { data: approvedConnections = [] } = useQuery<Connection[]>({
+    queryKey: ["/api/connections/approved"],
+    queryFn: getApprovedConnections,
     enabled: !!user,
   });
 
@@ -157,7 +169,7 @@ export default function Dashboard() {
   const stats = [
     { label: "Upcoming Events", value: myEvents.length, icon: Calendar, href: "/events" },
     { label: "New Matches", value: matches.length, icon: Sparkles, href: "/matches" },
-    { label: "Connections", value: conversations.length, icon: Users, href: "/matches" },
+    { label: "Connections", value: approvedConnections.length, icon: Users, href: "/connections" },
     { label: "Unread Messages", value: unreadMessages, icon: MessageSquare, href: "/messages" },
   ];
 

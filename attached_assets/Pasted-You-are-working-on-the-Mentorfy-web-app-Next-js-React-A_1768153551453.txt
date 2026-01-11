@@ -1,0 +1,44 @@
+You are working on the Mentorfy web app (Next.js/React + API). Fix the dashboard navigation + UI so the “Connections” metric card always deep-links to a true Connections view (approved relationships), NOT the Matches/New Matches page.
+
+GOALS
+1) Dashboard correctness:
+- On both mentor + student dashboards, clicking the “Connections” card must route to /connections (or /connections?role=mentor|mentee if needed).
+- It must NEVER route to /matches or the “New Matches” tab.
+- Clicking “New Matches” must route to /matches?tab=new (or your existing matches page).
+
+2) Connections page:
+- Create or update a dedicated Connections page that lists only APPROVED/ACTIVE connections.
+- The list should be role-aware:
+  - If viewer is a Mentor: show connected Students.
+  - If viewer is a Student: show connected Mentors.
+- Each connection card should include:
+  - Name, role label (Mentor/Student), company/school if available
+  - Connection context (if available): event name OR “Matched by goals/interests”
+  - Status badge: “Connected”
+  - Primary CTA: “Message” (routes to /messages with that user/thread)
+  - Secondary CTA: “View Profile” (routes to /profile/[id] or existing profile route)
+
+3) API + data integrity:
+- Ensure the Connections count metric uses the same definition as the Connections page (approved/active only).
+- Create/confirm an endpoint like GET /api/connections (or reuse existing) that returns approved connections for the logged-in user.
+- If the DB has a status field (approved/pending/declined), filter to approved only.
+- If you currently store connections in a “Connections” table, use that. Do NOT infer connections from matches.
+
+4) UX polish:
+- If there are zero connections, show an empty state:
+  - Title: “No connections yet”
+  - Subtitle: “When a connection is approved, it will show up here.”
+  - CTA: “View Matches” → /matches?tab=new
+- Make sure buttons are clickable and route correctly (no disabled styles or missing onClick).
+
+IMPLEMENTATION NOTES
+- Keep Matches and Connections as separate mental models: Matches = potential, Connections = active relationships.
+- Update the dashboard card component so the onClick/Link points to /connections.
+- Add basic unit/integration checks if your repo has them; otherwise, manually verify:
+  - Dashboard “Connections” → /connections
+  - /connections renders list of approved connections
+  - “Message” routes properly
+  - “View Profile” routes properly
+
+DELIVERABLE
+- PR-style summary of files changed, what you updated, and how to test locally.

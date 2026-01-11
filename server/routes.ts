@@ -351,6 +351,39 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/connections/approved/enriched", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const connections = await storage.getApprovedConnectionsForUser(userId);
+      
+      const enriched = await Promise.all(
+        connections.map(async (conn) => {
+          const otherUserId = conn.fromUserId === userId ? conn.toUserId : conn.fromUserId;
+          const otherUser = await storage.getUserProfile(otherUserId);
+          const event = conn.eventId ? await storage.getEvent(conn.eventId) : undefined;
+          
+          let contextLabel: string | undefined;
+          if (event) {
+            contextLabel = `Connected via ${event.name}`;
+          } else if (conn.message) {
+            contextLabel = "Matched by goals/interests";
+          }
+          
+          return {
+            connection: conn,
+            otherUser,
+            contextLabel,
+          };
+        })
+      );
+      
+      res.json(enriched.filter(e => e.otherUser));
+    } catch (error) {
+      console.error("Get enriched approved connections error:", error);
+      res.status(500).json({ error: "Failed to fetch connections" });
+    }
+  });
+
   app.post("/api/connections", requireAuth, async (req, res) => {
     try {
       const { toUserId, message, eventId } = req.body;

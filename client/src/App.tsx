@@ -11,6 +11,7 @@ import Matches from "@/pages/Matches";
 import Messages from "@/pages/Messages";
 import Dashboard from "@/pages/Dashboard";
 import Profile from "@/pages/Profile";
+import Connections from "@/pages/Connections";
 import Auth from "@/pages/Auth";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/events" component={Events} />
       <Route path="/matches" component={Matches} />
+      <Route path="/connections" component={Connections} />
       <Route path="/messages" component={Messages} />
       <Route path="/about" component={About} />
       <Route path="/pricing" component={Pricing} />
