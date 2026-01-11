@@ -171,16 +171,17 @@ export const insertUserBadgeSchema = createInsertSchema(userBadges).omit({
 export type InsertUserBadge = z.infer<typeof insertUserBadgeSchema>;
 export type UserBadge = typeof userBadges.$inferSelect;
 
-// Matches table - tracks unlocked mentor-mentee matches from shared event RSVPs
+// Matches table - tracks unlocked mentor-mentee matches based on interests/goals
 export const matches = pgTable("matches", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   menteeId: varchar("mentee_id").notNull().references(() => users.id),
   mentorId: varchar("mentor_id").notNull().references(() => users.id),
-  eventId: integer("event_id").notNull().references(() => events.id),
+  eventId: integer("event_id").references(() => events.id),
   overlapScore: integer("overlap_score").notNull().default(0),
+  contextLabels: text("context_labels").array().default([]),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
-  uniqueIndex("matches_mentor_mentee_event_idx").on(table.mentorId, table.menteeId, table.eventId),
+  uniqueIndex("matches_mentor_mentee_idx").on(table.mentorId, table.menteeId),
 ]);
 
 export const insertMatchSchema = createInsertSchema(matches).omit({
@@ -212,12 +213,13 @@ export interface MatchData {
 export interface UnlockedMatchData {
   matchId: number;
   overlapScore: number;
-  event: {
+  event?: {
     id: number;
     title: string;
     startAt: Date | null;
     location: string;
   };
+  contextLabels: string[];
   person: UserProfileWithBadges;
 }
 
