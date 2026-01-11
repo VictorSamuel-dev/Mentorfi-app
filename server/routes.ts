@@ -8,7 +8,7 @@ import { z } from "zod";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 
 // Message limit for free users
-const FREE_MESSAGE_LIMIT = 2;
+const FREE_MESSAGE_LIMIT = 4;
 
 // Notification service (console stub for MVP)
 function notify(to: string, subject: string, body: string) {
@@ -139,8 +139,21 @@ export async function registerRoutes(
       const { 
         firstName, lastName, company, jobTitle, interests, targetCompanies, profileImageUrl,
         school, program, gradYear,
+        menteeGoals, menteeGoalStatement,
         maxConnectionsPerQuarter, preferredFormats, requiredMaterials
       } = req.body;
+      
+      // Validate menteeGoals (max 3, normalize)
+      let normalizedGoals = menteeGoals;
+      if (menteeGoals && Array.isArray(menteeGoals)) {
+        normalizedGoals = menteeGoals.slice(0, 3).map((g: string) => g.trim());
+      }
+      
+      // Validate menteeGoalStatement (max 200 chars)
+      let normalizedStatement = menteeGoalStatement;
+      if (menteeGoalStatement && typeof menteeGoalStatement === "string") {
+        normalizedStatement = menteeGoalStatement.trim().slice(0, 200);
+      }
       
       const updated = await storage.updateUser(req.session.userId!, {
         firstName,
@@ -153,6 +166,8 @@ export async function registerRoutes(
         school,
         program,
         gradYear,
+        menteeGoals: normalizedGoals,
+        menteeGoalStatement: normalizedStatement,
         maxConnectionsPerQuarter,
         preferredFormats,
         requiredMaterials,

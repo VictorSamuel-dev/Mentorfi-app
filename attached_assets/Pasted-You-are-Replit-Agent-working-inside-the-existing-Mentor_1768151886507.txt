@@ -1,0 +1,127 @@
+You are Replit Agent working inside the existing Mentorfy codebase. IMPORTANT:
+- Do NOT refactor or rewrite existing working flows (auth, requests, approvals, messaging, matches).
+- Implement ONLY the changes described below.
+- Reuse existing patterns/components/routes/validation.
+- Keep the app runnable after each step and verify with a short smoke test.
+
+GOAL (CHANGES TO IMPLEMENT)
+1) Make events optional (NOT required) for matching:
+   - Matching must work based on mentee goals + shared interests even if no event RSVP exists.
+   - If shared event attendance exists, it should BOOST match score and show a "Shared Event" label, but it must not be required.
+
+2) Add a Mentee "Goals" section with BOTH:
+   A) Multi-select goals (structured, used for matching)
+   B) A short text goal statement (1 sentence, used for context)
+
+3) Increase free messaging limit from 2 to 4 (server-enforced).
+
+------------------------------------------------------------
+STEP 0 — INSPECT (MANDATORY)
+- Find where matches are created/scored (match service, queries, overlapScore logic).
+- Identify current interest storage and how it's compared.
+- Identify existing profile schema and UI.
+- Identify where message limits are enforced (server-side).
+
+------------------------------------------------------------
+STEP 1 — DATABASE / SCHEMA CHANGES (DRIZZLE)
+Add the following to the existing profiles table (or create a menteeProfile extension only if profiles does not exist; prefer extending existing schema):
+
+- menteeGoals: JSON array of strings (default [])
+- menteeGoalStatement: VARCHAR/TEXT (default null)
+
+If there is already a goals field, adapt and reuse it; do not duplicate.
+
+Also, if messages limit is stored as a planTier or constant, no DB change needed.
+Run drizzle migration/push in the repo’s established way without breaking existing data.
+
+------------------------------------------------------------
+STEP 2 — API ENDPOINTS (PROFILE)
+Extend existing profile endpoints (do NOT create new parallel endpoints if they exist):
+
+- GET /api/profile returns menteeGoals and menteeGoalStatement for mentees.
+- PATCH /api/profile allows mentees to update:
+   - menteeGoals (array of strings, max 3)
+   - menteeGoalStatement (string, max 200 chars)
+
+Validation rules:
+- menteeGoals: required for mentee to request connections (must have at least 1 goal)
+- menteeGoalStatement: optional but recommended
+- Normalize goals by trimming and using consistent casing.
+
+------------------------------------------------------------
+STEP 3 — FRONTEND UI (GOALS SECTION)
+On the mentee profile screen (or onboarding step if you have it), add:
+
+A) Multi-select goals (max 3):
+Use these options EXACTLY (can be edited later, but ship now):
+- Career direction / exploration
+- Resume feedback
+- Interview prep
+- Breaking into a target company
+- Networking strategy
+- Grad school guidance
+- Leadership & professional growth
+- Switching careers
+- First job / internship guidance
+
+B) 1-sentence text box:
+Label: "In one sentence, what would make this mentorship valuable for you?"
+Helper: "Max 200 characters."
+Character counter optional.
+
+Display these on:
+- Mentee profile view (self)
+- Mentor-side request preview card (so mentors see what the student wants)
+
+------------------------------------------------------------
+STEP 4 — MATCHING LOGIC: EVENTS OPTIONAL
+Current behavior likely requires shared event RSVP to create a match.
+Change it so matches can be created without an event, based on:
+- Shared interests overlapScore (existing)
+- PLUS menteeGoals alignment signal
+
+IMPLEMENT THIS MINIMAL VERSION:
+- A match can exist when:
+   - interestOverlapScore >= existing threshold (or set threshold = 2 if currently used)
+   - AND mentee has at least 1 menteeGoal selected
+- Event-based overlap is now OPTIONAL:
+   - If a shared event exists, add an additional score boost (e.g., +2) and attach eventId/label where relevant.
+   - If no shared event, match remains valid but should be labeled "Goal/Interest Match" (no event label).
+
+UI behavior:
+- In match cards/lists, display:
+   - If shared event: "Shared Event" + event name
+   - Else: "Aligned Goals/Interests"
+- Do NOT break the existing Requests/Approval flow. If your Request currently requires eventId, make eventId nullable/optional in the request creation:
+   - Allow POST /api/requests with { mentorId, message, optional eventId }
+   - Validate: menteeGoals present + match exists by goals/interests (with or without event)
+
+IMPORTANT PRIVACY:
+- Keep existing guardrails. Before approval, show limited mentor identity as you currently do.
+
+------------------------------------------------------------
+STEP 5 — FREE MESSAGING LIMIT: 2 -> 4
+Find the server-side enforcement of the free tier message cap.
+Increase it from 2 to 4:
+- Prefer "4 messages per connection total" (not per day).
+- Ensure the limit is enforced server-side (not just UI).
+- Update UI copy wherever it states the limit.
+
+------------------------------------------------------------
+STEP 6 — SMOKE TEST (MANDATORY)
+Add a short checklist in README or as comments, then verify:
+1) Create mentee profile -> select goals (multi-select) + optional statement saves and reloads
+2) Create mentor with shared interests but NO event RSVP:
+   - Match appears labeled "Aligned Goals/Interests"
+3) Optional: RSVP both to an event:
+   - Match score increases and label shows "Shared Event"
+4) Mentee can send request WITHOUT eventId (or with eventId if available)
+5) Mentor can approve -> connection created -> messaging works
+6) Free messaging blocks only after 4 total messages for that connection
+
+DELIVERABLE
+- Working implementation of goals UI + profile storage
+- Event-optional matching and request flow
+- Updated free messaging cap to 4
+- No regressions to existing flows
+Proceed now.

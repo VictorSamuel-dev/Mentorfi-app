@@ -23,6 +23,8 @@ export const users = pgTable("users", {
   school: text("school"),
   program: text("program"),
   gradYear: integer("grad_year"),
+  menteeGoals: text("mentee_goals").array().default([]),
+  menteeGoalStatement: text("mentee_goal_statement"),
   // Mentor-specific fields
   maxConnectionsPerQuarter: integer("max_connections_per_quarter").default(2),
   preferredFormats: jsonb("preferred_formats").default([]),
@@ -43,10 +45,25 @@ export const insertUserSchema = createInsertSchema(users).pick({
   school: true,
   program: true,
   gradYear: true,
+  menteeGoals: true,
+  menteeGoalStatement: true,
   maxConnectionsPerQuarter: true,
   preferredFormats: true,
   requiredMaterials: true,
 });
+
+// Available mentee goal options for matching
+export const MENTEE_GOAL_OPTIONS = [
+  "Career direction / exploration",
+  "Resume feedback",
+  "Interview prep",
+  "Breaking into a target company",
+  "Networking strategy",
+  "Grad school guidance",
+  "Leadership & professional growth",
+  "Switching careers",
+  "First job / internship guidance",
+] as const;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;

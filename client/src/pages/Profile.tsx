@@ -18,8 +18,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Crown, Camera, Loader2 } from "lucide-react";
+import { Crown, Camera, Loader2, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import type { UserProfileWithBadges } from "@shared/schema";
+import { MENTEE_GOAL_OPTIONS } from "@shared/schema";
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -28,6 +31,8 @@ const profileSchema = z.object({
   jobTitle: z.string().optional(),
   interests: z.string().optional(),
   targetCompanies: z.string().optional(),
+  menteeGoals: z.array(z.string()).max(3, "Select up to 3 goals").optional(),
+  menteeGoalStatement: z.string().max(200, "Maximum 200 characters").optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -53,6 +58,8 @@ export default function Profile() {
       jobTitle: "",
       interests: "",
       targetCompanies: "",
+      menteeGoals: [],
+      menteeGoalStatement: "",
     },
     values: profile ? {
       firstName: profile.firstName || "",
@@ -61,6 +68,8 @@ export default function Profile() {
       jobTitle: profile.jobTitle || "",
       interests: profile.interests?.join(", ") || "",
       targetCompanies: profile.targetCompanies?.join(", ") || "",
+      menteeGoals: profile.menteeGoals || [],
+      menteeGoalStatement: profile.menteeGoalStatement || "",
     } : undefined,
   });
 
@@ -72,6 +81,8 @@ export default function Profile() {
       jobTitle: data.jobTitle,
       interests: data.interests?.split(",").map(s => s.trim()).filter(Boolean),
       targetCompanies: data.targetCompanies?.split(",").map(s => s.trim()).filter(Boolean),
+      menteeGoals: data.menteeGoals,
+      menteeGoalStatement: data.menteeGoalStatement,
     }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/users/profile"] });
@@ -359,6 +370,79 @@ export default function Profile() {
                           </FormItem>
                         )}
                       />
+
+                      {/* Mentee Goals Section - only show for mentees */}
+                      {profile?.role === "mentee" && (
+                        <div className="space-y-4 pt-4 border-t">
+                          <h3 className="font-semibold text-lg">Your Mentorship Goals</h3>
+                          
+                          <FormField
+                            control={form.control}
+                            name="menteeGoals"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>What do you want help with? (select up to 3)</FormLabel>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                                  {MENTEE_GOAL_OPTIONS.map((goal) => {
+                                    const isSelected = field.value?.includes(goal) || false;
+                                    const isMaxSelected = (field.value?.length || 0) >= 3;
+                                    
+                                    return (
+                                      <div key={goal} className="flex items-center space-x-2">
+                                        <Checkbox
+                                          id={`goal-${goal}`}
+                                          checked={isSelected}
+                                          disabled={!isSelected && isMaxSelected}
+                                          onCheckedChange={(checked) => {
+                                            const currentValue = field.value || [];
+                                            if (checked) {
+                                              field.onChange([...currentValue, goal]);
+                                            } else {
+                                              field.onChange(currentValue.filter((g: string) => g !== goal));
+                                            }
+                                          }}
+                                          data-testid={`checkbox-goal-${goal.toLowerCase().replace(/\s+/g, "-")}`}
+                                        />
+                                        <Label
+                                          htmlFor={`goal-${goal}`}
+                                          className={`text-sm cursor-pointer ${!isSelected && isMaxSelected ? "text-muted-foreground" : ""}`}
+                                        >
+                                          {goal}
+                                        </Label>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="menteeGoalStatement"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>In one sentence, what would make this mentorship valuable for you?</FormLabel>
+                                <FormControl>
+                                  <Textarea 
+                                    {...field}
+                                    value={field.value || ""}
+                                    placeholder="e.g., I want to break into product management at a tech company after graduating next year."
+                                    maxLength={200}
+                                    className="resize-none"
+                                    data-testid="input-mentee-goal-statement"
+                                  />
+                                </FormControl>
+                                <p className="text-xs text-muted-foreground text-right">
+                                  {(field.value?.length || 0)}/200 characters
+                                </p>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
 
                       <Button 
                         type="submit" 
