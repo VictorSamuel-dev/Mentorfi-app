@@ -1,0 +1,62 @@
+You are working inside the Mentorfy codebase. Update the Pricing page copy and feature bullets to reflect that events are OPTIONAL (goals/interests-based matching is primary), while keeping the existing Free vs Premium structure and $9.99/month price.
+
+GOALS
+1) Keep pricing and layout the same (2 cards: Free + Premium, $0 and $9.99/month). Do NOT add new tiers.
+2) Replace event-first language with “intentional connections” language.
+3) Remove claims/metrics that look fabricated (e.g., “Match Success Rate 85%”) if they appear on the Pricing page. (Only remove from Pricing page, not the homepage unless it’s shared.)
+4) Ensure copy is consistent with current product behavior:
+   - matching is based on goals + interests
+   - events can be used as optional context (not required)
+   - messaging is gated / limited on Free and expanded on Premium
+   - mentors approve connection requests before messaging continues
+
+COPY CHANGES (exact text)
+
+Pricing page header:
+- Title stays: “Simple Pricing”
+- Subtitle change to: “Start free and upgrade when you’re ready to go deeper.”
+
+FREE card:
+- Title stays: “Free”
+- Subtitle change to: “Get started with intentional connections”
+- Feature bullets REPLACE with:
+  ✓ Create a profile (student or mentor)
+  ✓ Discover mentors aligned to your goals
+  ✓ Request connections with mentor approval
+  ✓ Limited messaging per connection (guardrails)
+  ✓ Optional event-based context
+  ✓ Standard matching
+
+PREMIUM card:
+- Title stays: “Premium”
+- Subtitle change to: “Go deeper when you’re ready”
+- Price stays: “$9.99/month”
+- Feature bullets REPLACE with:
+  ✓ Everything in Free
+  ✓ Extended messaging per connection
+  ✓ Priority matching visibility
+  ✓ Advanced filters (role, industry, goals)
+  ✓ Early access to new features
+  ✓ Optional event coordination tools
+
+BUTTONS
+- Keep existing CTA buttons and routes, but update button text ONLY if it currently says something event-specific. Otherwise leave as-is.
+
+IMPLEMENTATION DETAILS
+- Find the Pricing page component (likely /pricing route in Next.js/React; e.g., app/pricing/page.tsx or pages/pricing.tsx or src/pages/Pricing.tsx).
+- Update the arrays/JSX that render bullet items to the exact copy above.
+- If pricing bullets are stored in a config file, update the config there.
+- Make sure icons/checkmarks render the same.
+
+QA / ACCEPTANCE TESTS
+- Navigate to /pricing:
+  - Header subtitle is updated.
+  - Free card has the new subtitle + 6 bullets exactly as listed.
+  - Premium card has the new subtitle + 6 bullets exactly as listed.
+  - No “RSVP to unlimited events” or “Browse all career events” remains anywhere on /pricing.
+  - Layout, styling, and pricing remain unchanged.
+- Run the app and confirm there are no TypeScript/ESLint errors.
+
+Deliverables:
+- Commit changes with message: “Update pricing copy for goals-first matching”
+- Briefly summarize files changed and what was updated.

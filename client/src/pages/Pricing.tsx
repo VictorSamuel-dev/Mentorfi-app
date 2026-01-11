@@ -9,13 +9,14 @@ export default function Pricing() {
     {
       name: "Free",
       price: "$0",
-      description: "Get started with limited messaging",
+      description: "Get started with intentional connections",
       features: [
-        "Browse all career events",
-        "RSVP to unlimited events",
-        "View mentor profiles",
-        "2 messages per connection",
-        "Basic matching algorithm",
+        "Create a profile (student or mentor)",
+        "Discover mentors aligned to your goals",
+        "Request connections with mentor approval",
+        "Limited messaging per connection (guardrails)",
+        "Optional event-based context",
+        "Standard matching",
       ],
       buttonText: "Get Started",
       highlighted: false,
@@ -24,14 +25,14 @@ export default function Pricing() {
       name: "Premium",
       price: "$9.99",
       period: "/month",
-      description: "Unlock unlimited networking",
+      description: "Go deeper when you're ready",
       features: [
         "Everything in Free",
-        "Unlimited messaging",
-        "Priority matching",
-        "Event coordination tools",
-        "Advanced filters",
-        "Read receipts",
+        "Extended messaging per connection",
+        "Priority matching visibility",
+        "Advanced filters (role, industry, goals)",
+        "Early access to new features",
+        "Optional event coordination tools",
       ],
       buttonText: "Upgrade Now",
       highlighted: true,
@@ -46,7 +47,7 @@ export default function Pricing() {
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold text-center mb-4">Simple Pricing</h1>
           <p className="text-lg text-muted-foreground text-center mb-12">
-            Start free and upgrade when you're ready for more connections.
+            Start free and upgrade when you're ready to go deeper.
           </p>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
