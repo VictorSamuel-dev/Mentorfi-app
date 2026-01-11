@@ -22,6 +22,7 @@ import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 import Blog from "@/pages/Blog";
 import Careers from "@/pages/Careers";
+import Settings from "@/pages/Settings";
 
 function Router() {
   return (
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/terms" component={Terms} />
       <Route path="/blog" component={Blog} />
       <Route path="/careers" component={Careers} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );

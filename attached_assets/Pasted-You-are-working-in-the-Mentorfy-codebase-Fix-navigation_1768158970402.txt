@@ -1,0 +1,60 @@
+You are working in the Mentorfy codebase. Fix navigation behavior for authenticated users and make Settings clickable for both mentors and mentees.
+
+PROBLEM 1 (logo / navigation causing re-login)
+When a user is logged in and clicks the logo (or other global nav items that are not part of their in-app flow), they get routed to the public homepage and then have to login again. This should not happen.
+
+REQUIREMENTS
+A) Auth persistence must remain intact across route changes. Users should NOT be logged out unless they click an explicit “Logout” button.
+B) If an authenticated user clicks the logo:
+   - Redirect them to their dashboard (role-based if applicable: mentor dashboard vs student dashboard).
+   - Do NOT route them to the public homepage.
+C) If an unauthenticated user clicks the logo:
+   - Route to the public homepage ("/") as usual.
+D) For any “public” routes (home/landing) visited by an authenticated user:
+   - Either allow viewing without disrupting session, OR auto-redirect to dashboard.
+   - But never clear session or force sign-in again unless user is actually logged out.
+
+IMPLEMENTATION NOTES (do not assume framework; inspect codebase)
+1) Find the global header/nav component (likely in layout or a Navbar component) where the logo link is defined.
+2) Replace the logo <Link href="/"> with conditional routing:
+   - if logged in -> go to "/dashboard" (or "/mentor/dashboard" and "/student/dashboard" depending on current user role)
+   - else -> "/"
+3) Confirm auth state is persisted:
+   - If using cookie-based sessions: ensure fetch calls include credentials, and the session cookie is not being cleared on route change.
+   - If using localStorage token: ensure token is not removed when visiting "/".
+   - Ensure there is no code on the homepage that calls logout(), clears cookies, clears localStorage, or overwrites session state.
+4) Add a small route guard utility:
+   - getDefaultAuthedRoute(user) returns appropriate dashboard route.
+   - Use it for logo clicks + optional auto-redirect from "/" when authed.
+
+PROBLEM 2 (Settings not clickable / not accessible for both roles)
+Settings should be clickable and accessible for both mentor and mentee accounts.
+
+REQUIREMENTS
+E) Add a visible Settings entry in the authenticated nav (or user menu) that works for both roles.
+F) Implement a Settings page route (e.g., "/settings") accessible to any authenticated user.
+G) Settings page should at minimum allow:
+   - view/update basic profile fields already supported in your schema (name, role, bio, interests/goals if present)
+   - change password only if your auth system supports it; otherwise omit.
+H) Ensure clicking Settings does not log the user out.
+
+ACCEPTANCE TESTS
+1) Login as mentor:
+   - Click logo -> lands on mentor dashboard (not homepage).
+   - Refresh -> still logged in.
+   - Click Settings -> opens settings page; make a small edit; save; still logged in.
+2) Login as student:
+   - Click logo -> lands on student dashboard.
+   - Click Settings -> opens settings page; still logged in.
+3) Logout button works:
+   - Clicking Logout ends session and routes to homepage/login.
+4) Visiting "/" while logged in:
+   - Either stays logged in with no disruption OR redirects to dashboard automatically.
+   - In no case should it require re-login.
+
+DELIVERABLES
+- Implement the fixes.
+- List files changed.
+- Add brief explanation of the root cause you found (e.g., logo href, homepage effect, auth store reset).
+- Run lint/typecheck/tests if present.
+- Commit message: "Fix authed navigation and enable settings page"

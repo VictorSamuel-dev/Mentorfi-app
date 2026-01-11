@@ -50,7 +50,7 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex h-14 items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2" data-testid="link-logo">
+          <Link href={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-2" data-testid="link-logo">
             <img 
               src="/branding/logo/mentorfy-logo.svg" 
               alt="Mentorfy" 
@@ -145,7 +145,10 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
                       <User className="mr-2 h-4 w-4" />
                       Profile
                     </DropdownMenuItem>
-                    <DropdownMenuItem data-testid="menu-item-settings">
+                    <DropdownMenuItem 
+                      data-testid="menu-item-settings"
+                      onClick={() => navigate("/settings")}
+                    >
                       <Settings className="mr-2 h-4 w-4" />
                       Settings
                     </DropdownMenuItem>

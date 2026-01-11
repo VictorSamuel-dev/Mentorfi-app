@@ -44,6 +44,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<InsertUser>): Promise<User | undefined>;
   getUserProfile(id: string): Promise<UserProfile | undefined>;
+  updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   upgradeToPremium(id: string): Promise<User | undefined>;
   
   // Event operations
@@ -145,6 +146,13 @@ export class DatabaseStorage implements IStorage {
     if (!user) return undefined;
     const { password, ...profile } = user;
     return profile;
+  }
+
+  async updateUserPassword(id: string, hashedPassword: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, id));
   }
 
   async upgradeToPremium(id: string): Promise<User | undefined> {
