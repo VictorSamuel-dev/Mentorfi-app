@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Check, X } from "lucide-react";
+import { Building2, Check, X, Target, MessageSquareQuote } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export interface ConnectionRequestData {
@@ -14,6 +14,8 @@ export interface ConnectionRequestData {
     role: "mentor" | "mentee";
     company?: string;
     profileImageUrl?: string;
+    menteeGoals?: string[];
+    menteeGoalStatement?: string;
   };
   message?: string;
   sharedEvent?: string;
@@ -81,6 +83,30 @@ export function ConnectionRequest({
               <p className="text-sm text-primary mt-2">
                 Meeting at: {sharedEvent}
               </p>
+            )}
+
+            {/* Mentee Goals Section - show what the mentee is looking for */}
+            {from.role === "mentee" && from.menteeGoals && from.menteeGoals.length > 0 && (
+              <div className="mt-3 p-3 rounded bg-primary/5 border border-primary/10">
+                <div className="flex items-center gap-1.5 text-sm font-medium mb-2">
+                  <Target className="h-3.5 w-3.5 text-primary" />
+                  <span>Looking for help with:</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {from.menteeGoals.map((goal) => (
+                    <Badge key={goal} variant="secondary" className="text-xs">
+                      {goal}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {from.role === "mentee" && from.menteeGoalStatement && (
+              <div className="mt-2 flex items-start gap-2 text-sm">
+                <MessageSquareQuote className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <p className="italic text-muted-foreground">"{from.menteeGoalStatement}"</p>
+              </div>
             )}
 
             {message && (

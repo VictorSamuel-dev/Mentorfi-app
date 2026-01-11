@@ -347,6 +347,8 @@ export default function Matches() {
                         role: (request.from?.role as "mentor" | "mentee") || "mentee",
                         company: request.from?.company,
                         profileImageUrl: request.from?.profileImageUrl,
+                        menteeGoals: request.from?.menteeGoals,
+                        menteeGoalStatement: request.from?.menteeGoalStatement,
                       },
                       message: request.message,
                       sharedEvent: request.event?.name,

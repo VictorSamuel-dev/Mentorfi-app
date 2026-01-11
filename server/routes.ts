@@ -143,15 +143,26 @@ export async function registerRoutes(
         maxConnectionsPerQuarter, preferredFormats, requiredMaterials
       } = req.body;
       
-      // Validate menteeGoals (max 3, normalize)
-      let normalizedGoals = menteeGoals;
-      if (menteeGoals && Array.isArray(menteeGoals)) {
-        normalizedGoals = menteeGoals.slice(0, 3).map((g: string) => g.trim());
+      // Validate menteeGoals (max 3, must be from allowed options)
+      let normalizedGoals: string[] | undefined;
+      if (menteeGoals !== undefined) {
+        if (!Array.isArray(menteeGoals)) {
+          return res.status(400).json({ error: "menteeGoals must be an array" });
+        }
+        // Filter to only allowed options, trim, and limit to 3
+        const { MENTEE_GOAL_OPTIONS } = await import("@shared/schema");
+        const allowedSet = new Set(MENTEE_GOAL_OPTIONS);
+        normalizedGoals = menteeGoals
+          .filter((g: unknown) => typeof g === "string" && allowedSet.has(g.trim()))
+          .slice(0, 3);
       }
       
       // Validate menteeGoalStatement (max 200 chars)
-      let normalizedStatement = menteeGoalStatement;
-      if (menteeGoalStatement && typeof menteeGoalStatement === "string") {
+      let normalizedStatement: string | undefined;
+      if (menteeGoalStatement !== undefined) {
+        if (typeof menteeGoalStatement !== "string") {
+          return res.status(400).json({ error: "menteeGoalStatement must be a string" });
+        }
         normalizedStatement = menteeGoalStatement.trim().slice(0, 200);
       }
       
