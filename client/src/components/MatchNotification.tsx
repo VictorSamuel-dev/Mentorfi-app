@@ -19,11 +19,12 @@ export interface MatchData {
     profileImageUrl?: string;
     badges?: BadgeDisplay[];
   };
-  event: {
+  event?: {
     id: number;
     name: string;
     date: Date;
   };
+  contextLabels?: string[];
   sharedInterests: string[];
   sharedCompany?: string;
 }
@@ -39,11 +40,16 @@ export function MatchNotification({
   onViewProfile,
   onViewEvent,
 }: MatchNotificationProps) {
-  const { matchedUser, event, sharedInterests, sharedCompany } = match;
+  const { matchedUser, event, contextLabels = [], sharedInterests, sharedCompany } = match;
 
   const getInitials = () => {
     return `${matchedUser.firstName[0]}${matchedUser.lastName[0]}`.toUpperCase();
   };
+
+  const hasEventContext = contextLabels.includes("Shared event context");
+  const matchDescription = hasEventContext 
+    ? "will be attending the same event."
+    : "share common interests and goals.";
 
   return (
     <Card className="border-l-4 border-l-primary" data-testid={`card-match-${match.id}`}>
@@ -58,8 +64,18 @@ export function MatchNotification({
               <span className="font-medium">New Match!</span> You and a{" "}
               {matchedUser.role} from{" "}
               <span className="font-medium">{sharedCompany || matchedUser.company}</span>{" "}
-              will be attending the same event.
+              {matchDescription}
             </p>
+
+            {contextLabels.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-3">
+                {contextLabels.map((label) => (
+                  <Badge key={label} variant="secondary" className="text-xs">
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+            )}
 
             <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
               <Avatar className="h-12 w-12">
@@ -90,12 +106,14 @@ export function MatchNotification({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              <span>
-                {event.name} - {format(event.date, "MMM d, yyyy")}
-              </span>
-            </div>
+            {event && (
+              <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                <span>
+                  {event.name} - {format(event.date, "MMM d, yyyy")}
+                </span>
+              </div>
+            )}
 
             {sharedInterests.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-3">
@@ -117,13 +135,15 @@ export function MatchNotification({
               >
                 View Profile
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => onViewEvent?.(event.id)}
-                data-testid={`button-view-match-event-${match.id}`}
-              >
-                View Event
-              </Button>
+              {event && (
+                <Button
+                  variant="outline"
+                  onClick={() => onViewEvent?.(event.id)}
+                  data-testid={`button-view-match-event-${match.id}`}
+                >
+                  View Event
+                </Button>
+              )}
             </div>
           </div>
         </div>

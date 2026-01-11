@@ -113,8 +113,8 @@ export default function Dashboard() {
       setSelectedEvent(event as Event);
       setEventDialogOpen(true);
     } else {
-      const match = matches.find(m => m.event.id === eventId);
-      if (match) {
+      const match = matches.find(m => m.event?.id === eventId);
+      if (match?.event) {
         setSelectedEvent({
           id: match.event.id,
           name: match.event.title,
@@ -267,11 +267,12 @@ export default function Dashboard() {
                       key={match.matchId}
                       match={{
                         id: String(match.matchId),
-                        event: {
+                        event: match.event ? {
                           id: match.event.id,
                           name: match.event.title,
                           date: match.event.startAt ? new Date(match.event.startAt) : new Date(),
-                        },
+                        } : undefined,
+                        contextLabels: match.contextLabels || [],
                         sharedInterests: match.person.interests || [],
                         sharedCompany: match.person.company || undefined,
                         matchedUser: {

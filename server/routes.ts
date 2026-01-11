@@ -162,6 +162,9 @@ export async function registerRoutes(
         return res.status(404).json({ error: "User not found" });
       }
 
+      // Generate interest-based matches after profile update
+      await storage.generateInterestBasedMatches(req.session.userId!);
+
       const { password: _, ...profile } = updated;
       res.json(profile);
     } catch (error) {

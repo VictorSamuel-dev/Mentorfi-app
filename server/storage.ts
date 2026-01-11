@@ -95,8 +95,9 @@ export interface IStorage {
   getMentorsForBrowsing(userId: string): Promise<UserProfileWithBadges[]>;
   getUnlockedMatchesForUser(userId: string): Promise<UnlockedMatchData[]>;
   getSuggestedMentors(userId: string): Promise<UserProfileWithBadges[]>;
-  computeOverlapScore(userId1: string, userId2: string): Promise<number>;
+  computeOverlapScore(userId1: string, userId2: string): Promise<{ score: number; sharedInterests: string[]; sharedCompanies: string[] }>;
   upsertEventMatchesForEvent(eventId: number): Promise<void>;
+  generateInterestBasedMatches(userId: string): Promise<void>;
   
   // Badge operations
   getBadges(): Promise<Badge[]>;
@@ -556,26 +557,45 @@ export class DatabaseStorage implements IStorage {
     return profiles;
   }
 
-  // Compute overlap score (number of shared interests)
-  async computeOverlapScore(userId1: string, userId2: string): Promise<number> {
+  // Compute overlap score (shared interests + shared target companies/goals)
+  async computeOverlapScore(userId1: string, userId2: string): Promise<{ score: number; sharedInterests: string[]; sharedCompanies: string[] }> {
     const user1 = await this.getUser(userId1);
     const user2 = await this.getUser(userId2);
     
-    if (!user1 || !user2) return 0;
+    if (!user1 || !user2) return { score: 0, sharedInterests: [], sharedCompanies: [] };
     
-    const interests1 = user1.interests || [];
-    const interests2 = user2.interests || [];
+    // Clone arrays to avoid mutating original database objects
+    const interests1 = [...(user1.interests || [])];
+    const interests2 = [...(user2.interests || [])];
+    const companies1 = [...(user1.targetCompanies || [])];
+    const companies2 = [...(user2.targetCompanies || [])];
+    
+    // For mentors, also include their company as a target
+    if (user1.role === "mentor" && user1.company) {
+      companies1.push(user1.company);
+    }
+    if (user2.role === "mentor" && user2.company) {
+      companies2.push(user2.company);
+    }
     
     const sharedInterests = interests1.filter(i => 
       interests2.some(i2 => i2.toLowerCase() === i.toLowerCase())
     );
     
-    return sharedInterests.length;
+    const sharedCompanies = companies1.filter(c =>
+      companies2.some(c2 => c2.toLowerCase() === c.toLowerCase())
+    );
+    
+    // Score: 1 point per shared interest, 2 points per shared company/goal
+    const score = sharedInterests.length + (sharedCompanies.length * 2);
+    
+    return { score, sharedInterests, sharedCompanies };
   }
 
-  // Upsert matches for all mentee-mentor pairs at an event
+  // Upsert matches for all mentee-mentor pairs at an event - adds "Shared event context" label
   async upsertEventMatchesForEvent(eventId: number): Promise<void> {
-    const MINIMUM_OVERLAP_THRESHOLD = 2;
+    const MINIMUM_INTEREST_OVERLAP = 1;
+    const EVENT_BOOST = 3;
     
     // Get all RSVPs for this event
     const rsvps = await db
@@ -596,35 +616,56 @@ export class DatabaseStorage implements IStorage {
     const mentees = rsvpUsers.filter(u => u.role === "mentee");
     const mentors = rsvpUsers.filter(u => u.role === "mentor");
     
-    // For each mentee-mentor pair, compute overlap and upsert match if >= threshold
+    // For each mentee-mentor pair, compute overlap and upsert match with event context
     for (const mentee of mentees) {
       for (const mentor of mentors) {
-        const overlapScore = await this.computeOverlapScore(mentee.id, mentor.id);
+        const { score: baseScore } = await this.computeOverlapScore(mentee.id, mentor.id);
         
-        if (overlapScore >= MINIMUM_OVERLAP_THRESHOLD) {
-          // Check if match already exists
-          const existing = await db
-            .select()
-            .from(matches)
-            .where(and(
-              eq(matches.menteeId, mentee.id),
-              eq(matches.mentorId, mentor.id),
-              eq(matches.eventId, eventId)
-            ));
+        // Require at least some interest/goal overlap before applying event boost
+        if (baseScore < MINIMUM_INTEREST_OVERLAP) continue;
+        
+        const boostedScore = baseScore + EVENT_BOOST;
+        
+        // Check if match already exists for this pair
+        const existing = await db
+          .select()
+          .from(matches)
+          .where(and(
+            eq(matches.menteeId, mentee.id),
+            eq(matches.mentorId, mentor.id)
+          ));
+        
+        const contextLabels = ["Shared event context"];
+        
+        if (existing.length === 0) {
+          // Insert new match with event context
+          await db.insert(matches).values({
+            menteeId: mentee.id,
+            mentorId: mentor.id,
+            eventId,
+            overlapScore: boostedScore,
+            contextLabels,
+          });
+        } else {
+          // Update with event context if score is higher
+          const currentLabels = existing[0].contextLabels || [];
+          const updatedLabels = currentLabels.includes("Shared event context") 
+            ? currentLabels 
+            : [...currentLabels, "Shared event context"];
           
-          if (existing.length === 0) {
-            // Insert new match
-            await db.insert(matches).values({
-              menteeId: mentee.id,
-              mentorId: mentor.id,
-              eventId,
-              overlapScore,
-            });
-          } else {
-            // Update overlap score if it changed
+          if (boostedScore > existing[0].overlapScore) {
             await db
               .update(matches)
-              .set({ overlapScore })
+              .set({ 
+                overlapScore: boostedScore, 
+                eventId,
+                contextLabels: updatedLabels,
+              })
+              .where(eq(matches.id, existing[0].id));
+          } else if (!currentLabels.includes("Shared event context")) {
+            await db
+              .update(matches)
+              .set({ contextLabels: updatedLabels })
               .where(eq(matches.id, existing[0].id));
           }
         }
@@ -632,7 +673,69 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Get unlocked matches for user (event-based matches)
+  // Generate interest-based matches for a user (no event required)
+  async generateInterestBasedMatches(userId: string): Promise<void> {
+    const MINIMUM_OVERLAP_THRESHOLD = 2;
+    
+    const user = await this.getUser(userId);
+    if (!user) return;
+    
+    // Get potential match candidates (opposite role)
+    const candidates = await db
+      .select()
+      .from(users)
+      .where(eq(users.role, user.role === "mentee" ? "mentor" : "mentee"));
+    
+    for (const candidate of candidates) {
+      const { score } = await this.computeOverlapScore(userId, candidate.id);
+      
+      if (score >= MINIMUM_OVERLAP_THRESHOLD) {
+        const menteeId = user.role === "mentee" ? userId : candidate.id;
+        const mentorId = user.role === "mentor" ? userId : candidate.id;
+        
+        // Check if match already exists
+        const existing = await db
+          .select()
+          .from(matches)
+          .where(and(
+            eq(matches.menteeId, menteeId),
+            eq(matches.mentorId, mentorId)
+          ));
+        
+        const contextLabels = ["Shared interests"];
+        
+        if (existing.length === 0) {
+          // Insert new interest-based match (no event)
+          await db.insert(matches).values({
+            menteeId,
+            mentorId,
+            overlapScore: score,
+            contextLabels,
+          });
+        } else {
+          // Update score if higher and add label if not present
+          const currentLabels = existing[0].contextLabels || [];
+          const needsLabelUpdate = !currentLabels.includes("Shared interests");
+          const needsScoreUpdate = score > existing[0].overlapScore;
+          
+          if (needsLabelUpdate || needsScoreUpdate) {
+            const updatedLabels = needsLabelUpdate 
+              ? [...currentLabels, "Shared interests"]
+              : currentLabels;
+            await db
+              .update(matches)
+              .set({ 
+                overlapScore: Math.max(score, existing[0].overlapScore),
+                contextLabels: updatedLabels,
+              })
+              .where(eq(matches.id, existing[0].id));
+          }
+        }
+      }
+    }
+  }
+
+  // Get unlocked matches for user (interest-based and event-based matches)
   async getUnlockedMatchesForUser(userId: string): Promise<UnlockedMatchData[]> {
     const user = await this.getUser(userId);
     if (!user) return [];
@@ -644,13 +747,13 @@ export class DatabaseStorage implements IStorage {
         .select()
         .from(matches)
         .where(eq(matches.menteeId, userId))
-        .orderBy(desc(matches.createdAt));
+        .orderBy(desc(matches.overlapScore), desc(matches.createdAt));
     } else {
       userMatches = await db
         .select()
         .from(matches)
         .where(eq(matches.mentorId, userId))
-        .orderBy(desc(matches.createdAt));
+        .orderBy(desc(matches.overlapScore), desc(matches.createdAt));
     }
     
     const results: UnlockedMatchData[] = [];
@@ -658,9 +761,8 @@ export class DatabaseStorage implements IStorage {
     for (const match of userMatches) {
       const matchedUserId = user.role === "mentee" ? match.mentorId : match.menteeId;
       const matchedUser = await this.getUser(matchedUserId);
-      const event = await this.getEvent(match.eventId);
       
-      if (!matchedUser || !event) continue;
+      if (!matchedUser) continue;
       
       const { password, ...profile } = matchedUser;
       
@@ -678,15 +780,25 @@ export class DatabaseStorage implements IStorage {
         ? allBadges.filter(b => b.code === "FOUNDING_MENTOR" || b.code === "VERIFIED_MENTOR" || connectionStatus === "approved")
         : connectionStatus === "approved" ? allBadges : [];
       
+      // Build event info if available
+      let eventInfo: UnlockedMatchData["event"] | undefined;
+      if (match.eventId) {
+        const event = await this.getEvent(match.eventId);
+        if (event) {
+          eventInfo = {
+            id: event.id,
+            title: event.name,
+            startAt: event.date,
+            location: event.location,
+          };
+        }
+      }
+      
       results.push({
         matchId: match.id,
         overlapScore: match.overlapScore,
-        event: {
-          id: event.id,
-          title: event.name,
-          startAt: event.date,
-          location: event.location,
-        },
+        event: eventInfo,
+        contextLabels: match.contextLabels || [],
         person: {
           ...profile,
           connectionStatus: connectionStatus as "none" | "pending" | "approved",
@@ -712,7 +824,7 @@ export class DatabaseStorage implements IStorage {
     const mentorsWithScores: { mentor: User; score: number }[] = [];
     
     for (const mentor of mentors) {
-      const score = await this.computeOverlapScore(userId, mentor.id);
+      const { score } = await this.computeOverlapScore(userId, mentor.id);
       mentorsWithScores.push({ mentor, score });
     }
     
