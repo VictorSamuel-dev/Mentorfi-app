@@ -2,6 +2,23 @@
 
 A career mentorship platform connecting college students with Fortune 500 professionals through intentional, goals-based matching.
 
+## Screenshots
+
+### Landing Page
+![Landing Page](public/screenshots/landing.png)
+
+### Dashboard
+![Dashboard](public/screenshots/dashboard.png)
+
+### Mentor Matching
+![Matches](public/screenshots/matches.png)
+
+### Messaging
+![Messages](public/screenshots/messages.png)
+
+### Profile
+![Profile](public/screenshots/profile.png)
+
 ## Overview
 
 Mentorfy enables meaningful mentorship connections by matching students with mentors based on shared career interests, goals, and target companies. Unlike traditional networking platforms, Mentorfy focuses on intentional relationship-building with built-in guardrails that protect both mentors and mentees.
