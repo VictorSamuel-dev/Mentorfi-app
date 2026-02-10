@@ -313,17 +313,22 @@ export async function registerRoutes(
         customerId = customer.id;
       }
 
+      const proto = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${proto}://${host}`;
+
       const session = await stripeService.createCheckoutSession(
         customerId,
         priceId,
-        `${req.protocol}://${req.get('host')}/premium?success=true`,
-        `${req.protocol}://${req.get('host')}/premium?canceled=true`,
+        `${baseUrl}/premium?success=true`,
+        `${baseUrl}/premium?canceled=true`,
         user.id
       );
 
       res.json({ url: session.url });
-    } catch (error) {
-      console.error("Checkout error:", error);
+    } catch (error: any) {
+      console.error("Checkout error:", error?.message || error);
+      console.error("Checkout error details:", error?.raw?.message || error?.statusCode || "unknown");
       res.status(500).json({ error: "Failed to create checkout session" });
     }
   });
