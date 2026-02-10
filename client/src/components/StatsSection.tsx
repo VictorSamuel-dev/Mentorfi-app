@@ -1,9 +1,20 @@
-const stats = [
+import { SHOW_PLACEHOLDERS } from "@shared/featureFlags";
+
+const placeholderStats = [
   { value: "500+", label: "Active Mentors" },
   { value: "2,500+", label: "Students Connected" },
   { value: "100+", label: "Professional Touchpoints" },
   { value: "85%", label: "Match Success Rate" },
 ];
+
+const betaStats = [
+  { value: "Growing", label: "Mentor Network" },
+  { value: "Beta", label: "Early Access" },
+  { value: "1:1", label: "Personalized Matching" },
+  { value: "Free", label: "To Get Started" },
+];
+
+const stats = SHOW_PLACEHOLDERS ? placeholderStats : betaStats;
 
 export function StatsSection() {
   return (

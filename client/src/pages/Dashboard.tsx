@@ -227,7 +227,8 @@ export default function Dashboard() {
                 <Card>
                   <CardContent className="p-6 text-center text-muted-foreground">
                     <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No upcoming events</p>
+                    <p>No upcoming events yet</p>
+                    <p className="text-sm mt-1">Events will appear here as they are added</p>
                     <Link href="/events">
                       <Button variant="ghost" className="mt-2">Browse events</Button>
                     </Link>
@@ -269,7 +270,7 @@ export default function Dashboard() {
                   <CardContent className="p-6 text-center text-muted-foreground">
                     <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p>No matches yet</p>
-                    <p className="text-sm mt-1">RSVP to events to find mentors</p>
+                    <p className="text-sm mt-1">Matches will appear as mentors and events are added</p>
                   </CardContent>
                 </Card>
               ) : (

@@ -1,7 +1,7 @@
+import { SHOW_PLACEHOLDERS } from "@shared/featureFlags";
 import { EventCard, type EventData } from "../EventCard";
 import { useState } from "react";
 
-// todo: remove mock functionality
 const mockEvent: EventData = {
   id: 1,
   name: "Tech Career Fair 2024",
@@ -18,8 +18,11 @@ const mockEvent: EventData = {
 export default function EventCardExample() {
   const [event, setEvent] = useState(mockEvent);
 
+  if (!SHOW_PLACEHOLDERS) {
+    return <div className="p-4 text-center text-muted-foreground">Placeholder examples are disabled.</div>;
+  }
+
   const handleRSVP = (eventId: number) => {
-    console.log("RSVP toggled for event:", eventId);
     setEvent((prev) => ({ ...prev, isAttending: !prev.isAttending }));
   };
 

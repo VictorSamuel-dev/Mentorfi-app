@@ -1,16 +1,20 @@
+import { SHOW_PLACEHOLDERS } from "@shared/featureFlags";
 import { db } from "./db";
 import { events, users, eventRsvps, connections } from "@shared/schema";
 import { hashPassword } from "./utils/password";
 import { eq } from "drizzle-orm";
 
 async function seed() {
-  console.log("Seeding database...");
+  if (!SHOW_PLACEHOLDERS) {
+    console.log("SHOW_PLACEHOLDERS is disabled — skipping placeholder data seeding.");
+    return;
+  }
 
-  // Check if events already exist
+  console.log("Seeding database with placeholder data (SHOW_PLACEHOLDERS = true)...");
+
   const existingEvents = await db.select().from(events);
   
   if (existingEvents.length === 0) {
-    // Create sample events
     const sampleEvents = [
       {
         name: "Tech Career Fair 2025",
@@ -100,7 +104,6 @@ async function seed() {
     console.log(`Events already exist (${existingEvents.length} events)`);
   }
 
-  // Check for existing mentors
   const existingMentors = await db.select().from(users).where(eq(users.role, "mentor"));
   
   let mentorIds: Record<string, string> = {};
@@ -178,7 +181,6 @@ async function seed() {
     }
   }
 
-  // Check for existing mentees
   const existingMentees = await db.select().from(users).where(eq(users.role, "mentee"));
   
   let menteeIds: Record<string, string> = {};
@@ -219,7 +221,6 @@ async function seed() {
     }
   }
 
-  // Check for existing RSVPs
   const existingRsvps = await db.select().from(eventRsvps);
   
   if (existingRsvps.length === 0) {
@@ -251,7 +252,6 @@ async function seed() {
     console.log(`RSVPs already exist (${existingRsvps.length} RSVPs)`);
   }
 
-  // Check for existing connections
   const existingConnections = await db.select().from(connections);
   
   if (existingConnections.length === 0) {

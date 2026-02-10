@@ -1,10 +1,10 @@
+import { SHOW_PLACEHOLDERS } from "@shared/featureFlags";
 import { MatchNotification, type MatchData } from "../MatchNotification";
 
-// todo: remove mock functionality
 const mockMatch: MatchData = {
-  id: 1,
+  id: "1",
   matchedUser: {
-    id: 2,
+    id: "2",
     firstName: "Michael",
     lastName: "Rodriguez",
     role: "mentor",
@@ -21,7 +21,11 @@ const mockMatch: MatchData = {
 };
 
 export default function MatchNotificationExample() {
-  const handleViewProfile = (userId: number) => {
+  if (!SHOW_PLACEHOLDERS) {
+    return <div className="p-4 text-center text-muted-foreground">Placeholder examples are disabled.</div>;
+  }
+
+  const handleViewProfile = (userId: string) => {
     console.log("View profile:", userId);
   };
 

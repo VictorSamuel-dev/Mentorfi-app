@@ -1,9 +1,9 @@
+import { SHOW_PLACEHOLDERS } from "@shared/featureFlags";
 import { ProfileCard, type ProfileData } from "../ProfileCard";
 import { useState } from "react";
 
-// todo: remove mock functionality
 const mockProfile: ProfileData = {
-  id: 1,
+  id: "1",
   firstName: "Sarah",
   lastName: "Chen",
   role: "mentor",
@@ -17,16 +17,19 @@ const mockProfile: ProfileData = {
 export default function ProfileCardExample() {
   const [profile, setProfile] = useState(mockProfile);
 
-  const handleConnect = (profileId: number) => {
-    console.log("Connection requested for profile:", profileId);
+  if (!SHOW_PLACEHOLDERS) {
+    return <div className="p-4 text-center text-muted-foreground">Placeholder examples are disabled.</div>;
+  }
+
+  const handleConnect = (profileId: string) => {
     setProfile((prev) => ({ ...prev, connectionStatus: "pending" as const }));
   };
 
-  const handleMessage = (profileId: number) => {
+  const handleMessage = (profileId: string) => {
     console.log("Open message for profile:", profileId);
   };
 
-  const handleViewProfile = (profileId: number) => {
+  const handleViewProfile = (profileId: string) => {
     console.log("View profile:", profileId);
   };
 

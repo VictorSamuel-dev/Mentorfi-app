@@ -179,8 +179,8 @@ export default function Events() {
           ) : filteredEvents.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No events found</p>
-              <p className="text-sm">Try adjusting your filters or search query</p>
+              <p className="text-lg font-medium">No events available yet</p>
+              <p className="text-sm">New events will be posted here as they become available. Check back soon.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

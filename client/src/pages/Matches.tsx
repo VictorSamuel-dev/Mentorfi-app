@@ -182,9 +182,9 @@ export default function Matches() {
               ) : unlockedMatches.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Unlock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No unlocked matches yet</p>
+                  <p className="text-lg font-medium">No matches yet</p>
                   <p className="text-sm max-w-md mx-auto">
-                    Matches unlock when you and a mentor RSVP to the same event and share at least 2 interests.
+                    Matches will appear here as mentors join and events are added. Complete your profile and add interests to improve matching.
                   </p>
                 </div>
               ) : (
@@ -290,8 +290,8 @@ export default function Matches() {
               ) : suggestedMentors.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No suggested mentors</p>
-                  <p className="text-sm">Add more interests to your profile to find mentors</p>
+                  <p className="text-lg font-medium">Mentors will appear once approved</p>
+                  <p className="text-sm">Our mentor network is growing. Add interests to your profile so we can match you when mentors join.</p>
                 </div>
               ) : (
                 <div className="grid gap-4">

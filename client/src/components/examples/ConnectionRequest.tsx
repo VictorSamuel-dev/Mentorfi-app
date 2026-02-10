@@ -1,11 +1,11 @@
+import { SHOW_PLACEHOLDERS } from "@shared/featureFlags";
 import { ConnectionRequest, type ConnectionRequestData } from "../ConnectionRequest";
 import { useState } from "react";
 
-// todo: remove mock functionality
 const mockRequest: ConnectionRequestData = {
   id: 1,
   from: {
-    id: 3,
+    id: "3",
     firstName: "Alex",
     lastName: "Johnson",
     role: "mentee",
@@ -20,17 +20,19 @@ const mockRequest: ConnectionRequestData = {
 export default function ConnectionRequestExample() {
   const [visible, setVisible] = useState(true);
 
+  if (!SHOW_PLACEHOLDERS) {
+    return <div className="p-4 text-center text-muted-foreground">Placeholder examples are disabled.</div>;
+  }
+
   const handleApprove = (requestId: number) => {
-    console.log("Approved request:", requestId);
     setVisible(false);
   };
 
   const handleDecline = (requestId: number) => {
-    console.log("Declined request:", requestId);
     setVisible(false);
   };
 
-  const handleViewProfile = (userId: number) => {
+  const handleViewProfile = (userId: string) => {
     console.log("View profile:", userId);
   };
 

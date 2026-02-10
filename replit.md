@@ -79,6 +79,9 @@ Preferred communication style: Simple, everyday language.
 - **tsx**: TypeScript execution for development
 - **drizzle-kit**: Database migrations and schema push
 
+### Feature Flags
+- **SHOW_PLACEHOLDERS**: Located in `shared/featureFlags.ts`, defaults to `false`. When `false`, all placeholder/mock data is disabled (seed.ts skips seeding, example components show disabled message, StatsSection shows beta-appropriate stats). Set to `true` for demo purposes to re-enable sample events, mentors, mentees, and mock data.
+
 ### Environment Variables Required
 - `DATABASE_URL`: PostgreSQL connection string
 - `SESSION_SECRET`: Session encryption key (optional, has dev fallback)

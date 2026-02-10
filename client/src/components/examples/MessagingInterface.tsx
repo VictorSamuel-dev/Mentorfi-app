@@ -1,7 +1,7 @@
+import { SHOW_PLACEHOLDERS } from "@shared/featureFlags";
 import { MessagingInterface, type Conversation } from "../MessagingInterface";
 import { useState } from "react";
 
-// todo: remove mock functionality
 const mockConversations: Conversation[] = [
   {
     id: 1,
@@ -47,6 +47,10 @@ export default function MessagingInterfaceExample() {
   const [selectedId, setSelectedId] = useState<number | undefined>(1);
   const currentUserId = 1;
 
+  if (!SHOW_PLACEHOLDERS) {
+    return <div className="p-4 text-center text-muted-foreground">Placeholder examples are disabled.</div>;
+  }
+
   const handleSelectConversation = (conversationId: number) => {
     setSelectedId(conversationId);
     setConversations((prev) =>
@@ -57,7 +61,6 @@ export default function MessagingInterfaceExample() {
   };
 
   const handleSendMessage = (conversationId: number, content: string) => {
-    console.log("Sending message:", content);
     setConversations((prev) =>
       prev.map((c) =>
         c.id === conversationId
