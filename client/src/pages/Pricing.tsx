@@ -23,12 +23,13 @@ export default function Pricing() {
   const checkoutMutation = useMutation({
     mutationFn: async (priceId: string) => {
       const res = await apiRequest("POST", "/api/stripe/checkout", { priceId });
-      return await res.json();
-    },
-    onSuccess: (data: { url: string }) => {
+      const data = await res.json();
       if (data.url) {
-        window.location.href = data.url;
+        window.location.assign(data.url);
+      } else {
+        throw new Error("No checkout URL returned");
       }
+      return data;
     },
     onError: (error: any) => {
       toast({
