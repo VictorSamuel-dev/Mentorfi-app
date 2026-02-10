@@ -1,8 +1,22 @@
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Users, Calendar, MessageSquare } from "lucide-react";
 import heroImage from "@assets/generated_images/career_fair_networking_scene.png";
 
+function formatCount(n: number): string {
+  if (n >= 1000) {
+    return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "")}k`;
+  }
+  return n.toString();
+}
+
 export function HeroSection() {
+  const { data: stats } = useQuery<{ mentorCount: number; eventCount: number; connectionCount: number }>({
+    queryKey: ["/api/stats"],
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+
   return (
     <section className="relative min-h-[600px] flex items-center justify-center overflow-hidden">
       <div
@@ -44,17 +58,23 @@ export function HeroSection() {
         </div>
 
         <div className="flex flex-wrap justify-center gap-8 text-white/80">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-testid="stat-mentors">
             <Users className="h-5 w-5" />
-            <span className="text-sm font-medium">500+ Mentors</span>
+            <span className="text-sm font-medium">
+              {stats ? `${formatCount(stats.mentorCount)} Mentor${stats.mentorCount !== 1 ? "s" : ""}` : "— Mentors"}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-testid="stat-events">
             <Calendar className="h-5 w-5" />
-            <span className="text-sm font-medium">100+ Events</span>
+            <span className="text-sm font-medium">
+              {stats ? `${formatCount(stats.eventCount)} Event${stats.eventCount !== 1 ? "s" : ""}` : "— Events"}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-testid="stat-connections">
             <MessageSquare className="h-5 w-5" />
-            <span className="text-sm font-medium">2,000+ Connections</span>
+            <span className="text-sm font-medium">
+              {stats ? `${formatCount(stats.connectionCount)} Connection${stats.connectionCount !== 1 ? "s" : ""}` : "— Connections"}
+            </span>
           </div>
         </div>
       </div>

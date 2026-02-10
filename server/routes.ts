@@ -46,6 +46,20 @@ export async function registerRoutes(
 ): Promise<Server> {
   
   // =====================
+  // PUBLIC STATS
+  // =====================
+  
+  app.get("/api/stats", async (_req, res) => {
+    try {
+      const stats = await storage.getPlatformStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Get platform stats error:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // =====================
   // AUTH ROUTES
   // =====================
   

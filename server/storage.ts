@@ -111,6 +111,7 @@ export interface IStorage {
   revokeBadge(userId: string, badgeId: number): Promise<void>;
   hasApprovedConnection(userId1: string, userId2: string): Promise<boolean>;
   getUserProfileWithBadges(id: string, viewerId?: string): Promise<UserProfileWithBadges | undefined>;
+  getPlatformStats(): Promise<{ mentorCount: number; eventCount: number; connectionCount: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1027,6 +1028,27 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  async getPlatformStats(): Promise<{ mentorCount: number; eventCount: number; connectionCount: number }> {
+    const [mentorResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(eq(users.role, "mentor"));
+    
+    const [eventResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(events);
+    
+    const [connectionResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(connections)
+      .where(eq(connections.status, "approved"));
+    
+    return {
+      mentorCount: Number(mentorResult?.count || 0),
+      eventCount: Number(eventResult?.count || 0),
+      connectionCount: Number(connectionResult?.count || 0),
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();
