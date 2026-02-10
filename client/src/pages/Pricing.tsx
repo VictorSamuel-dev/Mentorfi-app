@@ -7,13 +7,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Pricing() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
 
-  const { data: productsData, isLoading: productsLoading } = useQuery({
+  const { data: productsData, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ["/api/stripe/products"],
+    retry: 2,
+    staleTime: 60000,
   });
 
   const checkoutMutation = useMutation({
@@ -26,13 +30,22 @@ export default function Pricing() {
         window.location.href = data.url;
       }
     },
+    onError: (error: any) => {
+      toast({
+        title: "Checkout failed",
+        description: error.message || "Unable to start checkout. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
-  const products = (productsData as any)?.data || [];
+  const products = (productsData as any)?.data || (Array.isArray(productsData) ? productsData : []);
   const premiumProduct = products.find((p: any) => 
     p.metadata?.feature === "premium_messaging" || p.name === "Mentorfy Premium"
   );
   const monthlyPrice = premiumProduct?.prices?.[0];
+
+  const FALLBACK_PRICE_ID = "price_1SzK9OIryGP3Ryv2bOMwkOWT";
 
   const handleUpgrade = () => {
     if (!isAuthenticated) {
@@ -42,9 +55,8 @@ export default function Pricing() {
     if (user?.isPremium) {
       return;
     }
-    if (monthlyPrice?.id) {
-      checkoutMutation.mutate(monthlyPrice.id);
-    }
+    const priceId = monthlyPrice?.id || FALLBACK_PRICE_ID;
+    checkoutMutation.mutate(priceId);
   };
 
   const plans = [
@@ -126,8 +138,7 @@ export default function Pricing() {
                     onClick={plan.action}
                     disabled={
                       (plan.highlighted && user?.isPremium) || 
-                      (plan.highlighted && checkoutMutation.isPending) ||
-                      productsLoading
+                      (plan.highlighted && checkoutMutation.isPending)
                     }
                     data-testid={`button-plan-${plan.name.toLowerCase()}`}
                   >
