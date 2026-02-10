@@ -18,6 +18,8 @@ export const users = pgTable("users", {
   profileImageUrl: text("profile_image_url"),
   isVerified: boolean("is_verified").default(false),
   isPremium: boolean("is_premium").default(false),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
   createdAt: timestamp("created_at").defaultNow(),
   // Mentee-specific fields
   school: text("school"),

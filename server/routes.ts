@@ -6,6 +6,8 @@ import { comparePasswords, hashPassword } from "./utils/password";
 import "./types";
 import { z } from "zod";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { stripeService } from "./stripeService";
+import { getStripePublishableKey } from "./stripeClient";
 
 // Message limit for free users
 const FREE_MESSAGE_LIMIT = 4;
@@ -242,6 +244,157 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Upgrade error:", error);
       res.status(500).json({ error: "Upgrade failed" });
+    }
+  });
+
+  // =====================
+  // STRIPE ROUTES
+  // =====================
+
+  app.get("/api/stripe/publishable-key", async (_req, res) => {
+    try {
+      const key = await getStripePublishableKey();
+      res.json({ publishableKey: key });
+    } catch (error) {
+      console.error("Stripe publishable key error:", error);
+      res.status(500).json({ error: "Failed to get Stripe key" });
+    }
+  });
+
+  app.get("/api/stripe/products", async (_req, res) => {
+    try {
+      const rows = await stripeService.listProductsWithPrices();
+      const productsMap = new Map<string, any>();
+      for (const row of rows) {
+        const r = row as any;
+        if (!productsMap.has(r.product_id)) {
+          productsMap.set(r.product_id, {
+            id: r.product_id,
+            name: r.product_name,
+            description: r.product_description,
+            active: r.product_active,
+            metadata: r.product_metadata,
+            prices: []
+          });
+        }
+        if (r.price_id) {
+          productsMap.get(r.product_id).prices.push({
+            id: r.price_id,
+            unit_amount: r.unit_amount,
+            currency: r.currency,
+            recurring: r.recurring,
+            active: r.price_active,
+          });
+        }
+      }
+      res.json({ data: Array.from(productsMap.values()) });
+    } catch (error) {
+      console.error("Stripe products error:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
+  app.post("/api/stripe/checkout", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const { priceId } = req.body;
+      if (!priceId) {
+        return res.status(400).json({ error: "Price ID is required" });
+      }
+
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripeService.createCustomer(user.email, user.id);
+        await storage.updateUserStripeInfo(user.id, { stripeCustomerId: customer.id });
+        customerId = customer.id;
+      }
+
+      const session = await stripeService.createCheckoutSession(
+        customerId,
+        priceId,
+        `${req.protocol}://${req.get('host')}/premium?success=true`,
+        `${req.protocol}://${req.get('host')}/premium?canceled=true`,
+        user.id
+      );
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Checkout error:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  app.get("/api/stripe/subscription", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.stripeSubscriptionId) {
+        return res.json({ subscription: null });
+      }
+      const subscription = await stripeService.getSubscription(user.stripeSubscriptionId);
+      res.json({ subscription });
+    } catch (error) {
+      console.error("Subscription fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch subscription" });
+    }
+  });
+
+  app.post("/api/stripe/sync-status", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (!user.stripeCustomerId) {
+        return res.json({ isPremium: false, synced: false });
+      }
+
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+      const subsResult = await db.execute(
+        sql`SELECT id, status FROM stripe.subscriptions WHERE customer = ${user.stripeCustomerId} AND status IN ('active', 'trialing') LIMIT 1`
+      );
+
+      const activeSub = subsResult.rows[0] as any;
+
+      if (activeSub && !user.isPremium) {
+        await storage.updateUserStripeInfo(user.id, { stripeSubscriptionId: activeSub.id });
+        await storage.upgradeToPremium(user.id);
+        return res.json({ isPremium: true, synced: true });
+      }
+
+      if (!activeSub && user.isPremium) {
+        await storage.downgradeFromPremium(user.id);
+        return res.json({ isPremium: false, synced: true });
+      }
+
+      return res.json({ isPremium: user.isPremium || false, synced: false });
+    } catch (error) {
+      console.error("Stripe sync status error:", error);
+      res.status(500).json({ error: "Failed to sync status" });
+    }
+  });
+
+  app.post("/api/stripe/portal", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.stripeCustomerId) {
+        return res.status(400).json({ error: "No Stripe customer found" });
+      }
+
+      const portalSession = await stripeService.createCustomerPortalSession(
+        user.stripeCustomerId,
+        `${req.protocol}://${req.get('host')}/premium`
+      );
+
+      res.json({ url: portalSession.url });
+    } catch (error) {
+      console.error("Portal session error:", error);
+      res.status(500).json({ error: "Failed to create portal session" });
     }
   });
 

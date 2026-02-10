@@ -23,6 +23,7 @@ import Terms from "@/pages/Terms";
 import Blog from "@/pages/Blog";
 import Careers from "@/pages/Careers";
 import Settings from "@/pages/Settings";
+import Premium from "@/pages/Premium";
 
 function Router() {
   return (
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/blog" component={Blog} />
       <Route path="/careers" component={Careers} />
       <Route path="/settings" component={Settings} />
+      <Route path="/premium" component={Premium} />
       <Route component={NotFound} />
     </Switch>
   );

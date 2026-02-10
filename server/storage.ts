@@ -46,6 +46,8 @@ export interface IStorage {
   getUserProfile(id: string): Promise<UserProfile | undefined>;
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   upgradeToPremium(id: string): Promise<User | undefined>;
+  downgradeFromPremium(id: string): Promise<User | undefined>;
+  updateUserStripeInfo(id: string, info: { stripeCustomerId?: string; stripeSubscriptionId?: string }): Promise<User | undefined>;
   
   // Event operations
   getEvents(): Promise<Event[]>;
@@ -159,6 +161,24 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .update(users)
       .set({ isPremium: true })
+      .where(eq(users.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async downgradeFromPremium(id: string): Promise<User | undefined> {
+    const result = await db
+      .update(users)
+      .set({ isPremium: false, stripeSubscriptionId: null })
+      .where(eq(users.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async updateUserStripeInfo(id: string, info: { stripeCustomerId?: string; stripeSubscriptionId?: string }): Promise<User | undefined> {
+    const result = await db
+      .update(users)
+      .set(info)
       .where(eq(users.id, id))
       .returning();
     return result[0];

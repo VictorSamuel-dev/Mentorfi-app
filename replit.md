@@ -82,6 +82,17 @@ Preferred communication style: Simple, everyday language.
 ### Feature Flags
 - **SHOW_PLACEHOLDERS**: Located in `shared/featureFlags.ts`, defaults to `false`. When `false`, all placeholder/mock data is disabled (seed.ts skips seeding, example components show disabled message, StatsSection shows beta-appropriate stats). Set to `true` for demo purposes to re-enable sample events, mentors, mentees, and mock data.
 
+### Stripe Integration
+- **stripe-replit-sync**: Manages webhook processing, schema creation, and data sync
+- **Stripe Client**: `server/stripeClient.ts` - fetches credentials from Replit connection API
+- **Webhook Handler**: `server/webhookHandlers.ts` - processes Stripe webhooks via stripe-replit-sync
+- **Stripe Service**: `server/stripeService.ts` - checkout sessions, customer management, portal sessions
+- **Seed Products**: `server/seed-products.ts` - creates Mentorfy Premium product ($9.99/month) in Stripe
+- **Webhook Route**: POST `/api/stripe/webhook` registered BEFORE `express.json()` in `server/index.ts`
+- **API Routes**: GET `/api/stripe/products`, POST `/api/stripe/checkout`, GET `/api/stripe/subscription`, POST `/api/stripe/portal`, GET `/api/stripe/publishable-key`
+- **Frontend Pages**: `/pricing` (Stripe checkout), `/premium` (subscription management)
+- **Database**: `stripe_customer_id` and `stripe_subscription_id` columns on users table; stripe schema managed automatically by stripe-replit-sync
+
 ### Environment Variables Required
 - `DATABASE_URL`: PostgreSQL connection string
 - `SESSION_SECRET`: Session encryption key (optional, has dev fallback)
