@@ -157,7 +157,7 @@ export default function Matches() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header isAuthenticated={true} user={user} notificationCount={requests.length} />
+      <Header isAuthenticated={true} user={user} notificationCount={requests.length} role={user.role} />
       
       <main className="flex-1 py-8 px-6">
         <div className="max-w-4xl mx-auto">

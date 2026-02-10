@@ -27,7 +27,7 @@ export default function Welcome() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header isAuthenticated={true} user={user} />
+      <Header isAuthenticated={true} user={user} role={user?.role} />
 
       <main className="flex-1 flex items-center justify-center py-12 px-4">
         <div className="max-w-2xl w-full text-center">

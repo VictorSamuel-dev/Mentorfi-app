@@ -8,13 +8,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Send, ArrowLeft, Lock, Sparkles } from "lucide-react";
+import { Send, ArrowLeft, Lock, Sparkles, Calendar } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { getConversations, sendMessage } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
+import { ReviewForm } from "@/components/ReviewForm";
 import type { ConversationData, Message } from "@shared/schema";
 
 export default function Messages() {
@@ -83,7 +84,7 @@ export default function Messages() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header isAuthenticated={true} user={user} notificationCount={0} />
+      <Header isAuthenticated={true} user={user} notificationCount={0} role={user.role} />
       
       <main className="flex-1 py-8 px-6">
         <div className="max-w-5xl mx-auto">
@@ -229,7 +230,25 @@ export default function Messages() {
                       </div>
                     </ScrollArea>
 
-                    {/* Message Input or Upgrade Prompt */}
+                    <div className="px-4 py-2 border-t flex items-center gap-2 flex-wrap">
+                      <Link href="/meetings">
+                        <Button variant="outline" size="sm" className="gap-1" data-testid="button-schedule-from-messages">
+                          <Calendar className="h-3.5 w-3.5" />
+                          Schedule Meeting
+                        </Button>
+                      </Link>
+                    </div>
+
+                    {selectedConversation.messageCount >= 3 && selectedConversation.participant && (
+                      <div className="px-4 py-2 border-t">
+                        <ReviewForm
+                          connectionId={selectedConversation.connectionId}
+                          revieweeId={selectedConversation.participant.id}
+                          revieweeName={`${selectedConversation.participant.firstName || ""} ${selectedConversation.participant.lastName || ""}`.trim()}
+                        />
+                      </div>
+                    )}
+
                     {selectedConversation.isLocked && !user?.isPremium ? (
                       <div className="p-4 border-t bg-muted/50">
                         <div className="text-center">

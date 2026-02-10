@@ -13,6 +13,10 @@ Key features include:
 - Post-signup Welcome page with role-specific guidance
 - Profile completion tracking with percentage banner on Dashboard
 - Mentor search/filtering by text search and industry on Browse Mentors tab
+- In-app notifications with real-time polling (connection requests, approvals, messages, reviews, meetings)
+- Mentor reviews and ratings (5-star system, one review per connection, shown after 3+ messages)
+- Meeting scheduler (video call, phone, in-person formats with status tracking)
+- Mentor analytics dashboard (profile views, connections, messages, meetings, ratings, 7-day activity chart)
 
 ## User Preferences
 

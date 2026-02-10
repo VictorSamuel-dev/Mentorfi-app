@@ -10,7 +10,13 @@ import type {
   Message,
   ConversationData,
   EventAttendeesResponse,
-  UserProfileWithBadges
+  UserProfileWithBadges,
+  Notification,
+  Review,
+  ReviewWithUser,
+  Meeting,
+  MeetingWithParticipant,
+  MentorAnalytics,
 } from "@shared/schema";
 
 // Auth API
@@ -133,4 +139,66 @@ export async function getMessages(connectionId: number): Promise<{ messages: Mes
 export async function sendMessage(connectionId: number, content: string): Promise<{ message: Message; isLocked: boolean; messageCount: number }> {
   const res = await apiRequest("POST", `/api/conversations/${connectionId}/messages`, { content });
   return res.json();
+}
+
+// Notifications API
+export async function getNotifications(): Promise<Notification[]> {
+  const res = await fetch("/api/notifications", { credentials: "include" });
+  return res.json();
+}
+
+export async function getUnreadNotificationCount(): Promise<number> {
+  const res = await fetch("/api/notifications/unread-count", { credentials: "include" });
+  const data = await res.json();
+  return data.count;
+}
+
+export async function markNotificationRead(id: number): Promise<void> {
+  await apiRequest("PATCH", `/api/notifications/${id}/read`);
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await apiRequest("POST", "/api/notifications/mark-all-read");
+}
+
+// Reviews API
+export async function createReview(data: { connectionId: number; revieweeId: string; rating: number; comment?: string }): Promise<Review> {
+  const res = await apiRequest("POST", "/api/reviews", data);
+  return res.json();
+}
+
+export async function getReviewsForUser(userId: string): Promise<{ reviews: ReviewWithUser[]; averageRating: number; totalReviews: number }> {
+  const res = await fetch(`/api/reviews/user/${userId}`, { credentials: "include" });
+  return res.json();
+}
+
+export async function getReviewForConnection(connectionId: number): Promise<{ review: Review | null }> {
+  const res = await fetch(`/api/reviews/connection/${connectionId}`, { credentials: "include" });
+  return res.json();
+}
+
+// Meetings API
+export async function createMeeting(data: { connectionId: number; title: string; scheduledAt: string; durationMinutes?: number; format?: string; location?: string; notes?: string }): Promise<Meeting> {
+  const res = await apiRequest("POST", "/api/meetings", data);
+  return res.json();
+}
+
+export async function getMeetings(): Promise<MeetingWithParticipant[]> {
+  const res = await fetch("/api/meetings", { credentials: "include" });
+  return res.json();
+}
+
+export async function updateMeetingStatus(id: number, status: string): Promise<Meeting> {
+  const res = await apiRequest("PATCH", `/api/meetings/${id}/status`, { status });
+  return res.json();
+}
+
+// Analytics API
+export async function getMentorAnalytics(): Promise<MentorAnalytics> {
+  const res = await fetch("/api/analytics/mentor", { credentials: "include" });
+  return res.json();
+}
+
+export async function logProfileView(userId: string): Promise<void> {
+  await apiRequest("POST", "/api/analytics/profile-view", { userId });
 }

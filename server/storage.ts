@@ -9,6 +9,10 @@ import {
   badges,
   userBadges,
   matches,
+  notifications,
+  reviews,
+  meetings,
+  analyticsEvents,
   type User,
   type InsertUser,
   type Event,
@@ -21,6 +25,13 @@ import {
   type InsertMessage,
   type Match,
   type InsertMatch,
+  type Notification,
+  type InsertNotification,
+  type Review,
+  type InsertReview,
+  type Meeting,
+  type InsertMeeting,
+  type InsertAnalyticsEvent,
   type EventWithAttendees,
   type UserProfile,
   type MatchData,
@@ -34,6 +45,9 @@ import {
   type InsertUserBadge,
   type BadgeDisplay,
   type UserProfileWithBadges,
+  type ReviewWithUser,
+  type MeetingWithParticipant,
+  type MentorAnalytics,
 } from "@shared/schema";
 import { hashPassword, comparePasswords } from "./utils/password";
 
@@ -112,6 +126,29 @@ export interface IStorage {
   hasApprovedConnection(userId1: string, userId2: string): Promise<boolean>;
   getUserProfileWithBadges(id: string, viewerId?: string): Promise<UserProfileWithBadges | undefined>;
   getPlatformStats(): Promise<{ mentorCount: number; eventCount: number; connectionCount: number }>;
+
+  // Notification operations
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getNotificationsForUser(userId: string, limit?: number): Promise<Notification[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  markNotificationRead(id: number, userId: string): Promise<void>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+
+  // Review operations
+  createReview(review: InsertReview): Promise<Review>;
+  getReviewsForUser(userId: string): Promise<ReviewWithUser[]>;
+  getReviewForConnection(connectionId: number, reviewerId: string): Promise<Review | undefined>;
+  getAverageRating(userId: string): Promise<{ average: number; count: number }>;
+
+  // Meeting operations
+  createMeeting(meeting: InsertMeeting): Promise<Meeting>;
+  getMeetingsForUser(userId: string): Promise<MeetingWithParticipant[]>;
+  getMeeting(id: number): Promise<Meeting | undefined>;
+  updateMeetingStatus(id: number, status: string): Promise<Meeting | undefined>;
+
+  // Analytics operations
+  logAnalyticsEvent(event: InsertAnalyticsEvent): Promise<void>;
+  getMentorAnalytics(userId: string): Promise<MentorAnalytics>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1047,6 +1084,262 @@ export class DatabaseStorage implements IStorage {
       mentorCount: Number(mentorResult?.count || 0),
       eventCount: Number(eventResult?.count || 0),
       connectionCount: Number(connectionResult?.count || 0),
+    };
+  }
+  // =====================
+  // NOTIFICATION OPERATIONS
+  // =====================
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [created] = await db.insert(notifications).values(notification).returning();
+    return created;
+  }
+
+  async getNotificationsForUser(userId: string, limit = 50): Promise<Notification[]> {
+    return db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit);
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return Number(result?.count || 0);
+  }
+
+  async markNotificationRead(id: number, userId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+  }
+
+  // =====================
+  // REVIEW OPERATIONS
+  // =====================
+
+  async createReview(review: InsertReview): Promise<Review> {
+    const [created] = await db.insert(reviews).values(review).returning();
+    return created;
+  }
+
+  async getReviewsForUser(userId: string): Promise<ReviewWithUser[]> {
+    const userReviews = await db
+      .select()
+      .from(reviews)
+      .where(eq(reviews.revieweeId, userId))
+      .orderBy(desc(reviews.createdAt));
+
+    const enriched: ReviewWithUser[] = [];
+    for (const review of userReviews) {
+      const [reviewer] = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          role: users.role,
+        })
+        .from(users)
+        .where(eq(users.id, review.reviewerId));
+
+      if (reviewer) {
+        enriched.push({ ...review, reviewer });
+      }
+    }
+    return enriched;
+  }
+
+  async getReviewForConnection(connectionId: number, reviewerId: string): Promise<Review | undefined> {
+    const [review] = await db
+      .select()
+      .from(reviews)
+      .where(and(eq(reviews.connectionId, connectionId), eq(reviews.reviewerId, reviewerId)));
+    return review;
+  }
+
+  async getAverageRating(userId: string): Promise<{ average: number; count: number }> {
+    const [result] = await db
+      .select({
+        avg: sql<number>`COALESCE(AVG(rating), 0)`,
+        count: sql<number>`count(*)`,
+      })
+      .from(reviews)
+      .where(eq(reviews.revieweeId, userId));
+    return {
+      average: Number(Number(result?.avg || 0).toFixed(1)),
+      count: Number(result?.count || 0),
+    };
+  }
+
+  // =====================
+  // MEETING OPERATIONS
+  // =====================
+
+  async createMeeting(meeting: InsertMeeting): Promise<Meeting> {
+    const [created] = await db.insert(meetings).values(meeting).returning();
+    return created;
+  }
+
+  async getMeetingsForUser(userId: string): Promise<MeetingWithParticipant[]> {
+    const userConnections = await this.getApprovedConnectionsForUser(userId);
+    const connectionIds = userConnections.map(c => c.id);
+
+    if (connectionIds.length === 0) return [];
+
+    const userMeetings = await db
+      .select()
+      .from(meetings)
+      .where(inArray(meetings.connectionId, connectionIds))
+      .orderBy(desc(meetings.scheduledAt));
+
+    const enriched: MeetingWithParticipant[] = [];
+    for (const meeting of userMeetings) {
+      const conn = userConnections.find(c => c.id === meeting.connectionId);
+      if (!conn) continue;
+      const otherUserId = conn.fromUserId === userId ? conn.toUserId : conn.fromUserId;
+      const [otherUser] = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          company: users.company,
+        })
+        .from(users)
+        .where(eq(users.id, otherUserId));
+
+      if (otherUser) {
+        enriched.push({ ...meeting, otherUser });
+      }
+    }
+    return enriched;
+  }
+
+  async getMeeting(id: number): Promise<Meeting | undefined> {
+    const [meeting] = await db.select().from(meetings).where(eq(meetings.id, id));
+    return meeting;
+  }
+
+  async updateMeetingStatus(id: number, status: string): Promise<Meeting | undefined> {
+    const [updated] = await db
+      .update(meetings)
+      .set({ status })
+      .where(eq(meetings.id, id))
+      .returning();
+    return updated;
+  }
+
+  // =====================
+  // ANALYTICS OPERATIONS
+  // =====================
+
+  async logAnalyticsEvent(event: InsertAnalyticsEvent): Promise<void> {
+    await db.insert(analyticsEvents).values(event);
+  }
+
+  async getMentorAnalytics(userId: string): Promise<MentorAnalytics> {
+    const [viewsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(analyticsEvents)
+      .where(and(
+        eq(analyticsEvents.subjectUserId, userId),
+        eq(analyticsEvents.eventType, "profile_view")
+      ));
+
+    const [connectionsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(connections)
+      .where(and(
+        or(eq(connections.fromUserId, userId), eq(connections.toUserId, userId)),
+        eq(connections.status, "approved")
+      ));
+
+    const [messagesResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .where(eq(messages.senderId, userId));
+
+    const [meetingsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(meetings)
+      .where(
+        inArray(meetings.connectionId,
+          db.select({ id: connections.id }).from(connections).where(
+            and(
+              or(eq(connections.fromUserId, userId), eq(connections.toUserId, userId)),
+              eq(connections.status, "approved")
+            )
+          )
+        )
+      );
+
+    const ratingResult = await this.getAverageRating(userId);
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const recentViewsRaw = await db
+      .select({
+        date: sql<string>`TO_CHAR(created_at, 'YYYY-MM-DD')`,
+        count: sql<number>`count(*)`,
+      })
+      .from(analyticsEvents)
+      .where(and(
+        eq(analyticsEvents.subjectUserId, userId),
+        eq(analyticsEvents.eventType, "profile_view"),
+        sql`created_at >= ${sevenDaysAgo}`
+      ))
+      .groupBy(sql`TO_CHAR(created_at, 'YYYY-MM-DD')`)
+      .orderBy(sql`TO_CHAR(created_at, 'YYYY-MM-DD')`);
+
+    const recentMessagesRaw = await db
+      .select({
+        date: sql<string>`TO_CHAR(created_at, 'YYYY-MM-DD')`,
+        count: sql<number>`count(*)`,
+      })
+      .from(messages)
+      .where(and(
+        eq(messages.senderId, userId),
+        sql`created_at >= ${sevenDaysAgo}`
+      ))
+      .groupBy(sql`TO_CHAR(created_at, 'YYYY-MM-DD')`)
+      .orderBy(sql`TO_CHAR(created_at, 'YYYY-MM-DD')`);
+
+    const recentActivity: { date: string; views: number; messages: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split("T")[0];
+      const viewEntry = recentViewsRaw.find(r => r.date === dateStr);
+      const msgEntry = recentMessagesRaw.find(r => r.date === dateStr);
+      recentActivity.push({
+        date: dateStr,
+        views: Number(viewEntry?.count || 0),
+        messages: Number(msgEntry?.count || 0),
+      });
+    }
+
+    return {
+      profileViews: Number(viewsResult?.count || 0),
+      totalConnections: Number(connectionsResult?.count || 0),
+      totalMessages: Number(messagesResult?.count || 0),
+      totalMeetings: Number(meetingsResult?.count || 0),
+      averageRating: ratingResult.average,
+      totalReviews: ratingResult.count,
+      recentActivity,
     };
   }
 }

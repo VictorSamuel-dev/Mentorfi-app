@@ -268,6 +268,90 @@ export const insertMatchSchema = createInsertSchema(matches).omit({
 export type InsertMatch = z.infer<typeof insertMatchSchema>;
 export type Match = typeof matches.$inferSelect;
 
+// Notifications table - in-app notifications
+export const notifications = pgTable("notifications", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(), // "connection_approved", "connection_request", "new_message", "review_received", "meeting_scheduled", "meeting_updated"
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  entityType: text("entity_type"), // "connection", "message", "review", "meeting"
+  entityId: integer("entity_id"),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
+// Reviews table - mentor ratings and feedback
+export const reviews = pgTable("reviews", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  connectionId: integer("connection_id").notNull().references(() => connections.id),
+  reviewerId: varchar("reviewer_id").notNull().references(() => users.id),
+  revieweeId: varchar("reviewee_id").notNull().references(() => users.id),
+  rating: integer("rating").notNull(), // 1-5
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("reviews_connection_reviewer_idx").on(table.connectionId, table.reviewerId),
+]);
+
+export const insertReviewSchema = createInsertSchema(reviews).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertReview = z.infer<typeof insertReviewSchema>;
+export type Review = typeof reviews.$inferSelect;
+
+// Meetings table - scheduled 1-on-1 calls
+export const meetings = pgTable("meetings", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  connectionId: integer("connection_id").notNull().references(() => connections.id),
+  schedulerId: varchar("scheduler_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  scheduledAt: timestamp("scheduled_at").notNull(),
+  durationMinutes: integer("duration_minutes").notNull().default(30),
+  format: text("format").notNull().default("video_call"), // "video_call", "phone_call", "in_person"
+  location: text("location"),
+  notes: text("notes"),
+  status: text("status").notNull().default("scheduled"), // "scheduled", "completed", "cancelled"
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMeetingSchema = createInsertSchema(meetings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMeeting = z.infer<typeof insertMeetingSchema>;
+export type Meeting = typeof meetings.$inferSelect;
+
+// Analytics events table - tracks user activity
+export const analyticsEvents = pgTable("analytics_events", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  eventType: text("event_type").notNull(), // "profile_view", "message_sent", "connection_approved", "meeting_scheduled"
+  subjectUserId: varchar("subject_user_id"),
+  connectionId: integer("connection_id"),
+  metadata: jsonb("metadata").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+
 // Extended types for frontend use
 export interface EventWithAttendees extends Event {
   attendeeCount: number;
@@ -341,4 +425,34 @@ export interface UserProfileWithBadges extends UserProfile {
 export interface EventAttendeesResponse {
   totalAttending: number;
   visibleAttendees: VisibleAttendee[];
+}
+
+export interface ReviewWithUser extends Review {
+  reviewer: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+    role: string;
+  };
+}
+
+export interface MeetingWithParticipant extends Meeting {
+  otherUser: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+    company: string | null;
+  };
+}
+
+export interface MentorAnalytics {
+  profileViews: number;
+  totalConnections: number;
+  totalMessages: number;
+  totalMeetings: number;
+  averageRating: number;
+  totalReviews: number;
+  recentActivity: { date: string; views: number; messages: number }[];
 }

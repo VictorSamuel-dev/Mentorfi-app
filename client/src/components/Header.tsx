@@ -9,11 +9,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, MessageSquare, Users, Bell, Menu, LogOut, User, Settings, LayoutDashboard } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Calendar, MessageSquare, Users, Menu, LogOut, User, Settings, LayoutDashboard, BarChart3 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { logout } from "@/lib/api";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 interface HeaderProps {
   isAuthenticated?: boolean;
@@ -24,9 +24,10 @@ interface HeaderProps {
     email?: string | null;
   } | null;
   notificationCount?: number;
+  role?: string;
 }
 
-export function Header({ isAuthenticated = false, user, notificationCount = 0 }: HeaderProps) {
+export function Header({ isAuthenticated = false, user, notificationCount = 0, role }: HeaderProps) {
   const [location, navigate] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -86,23 +87,7 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
 
             {isAuthenticated ? (
               <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative"
-                  data-testid="button-notifications"
-                  onClick={() => navigate("/matches")}
-                >
-                  <Bell className="h-5 w-5" />
-                  {notificationCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-xs"
-                    >
-                      {notificationCount > 9 ? "9+" : notificationCount}
-                    </Badge>
-                  )}
-                </Button>
+                <NotificationDropdown />
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -152,6 +137,15 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0 }:
                       <Settings className="mr-2 h-4 w-4" />
                       Settings
                     </DropdownMenuItem>
+                    {role === "mentor" && (
+                      <DropdownMenuItem 
+                        data-testid="menu-item-analytics"
+                        onClick={() => navigate("/analytics")}
+                      >
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        Analytics
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-destructive"

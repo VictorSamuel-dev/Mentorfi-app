@@ -176,7 +176,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header isAuthenticated={true} user={user} notificationCount={matches.length} />
+      <Header isAuthenticated={true} user={user} notificationCount={matches.length} role={user.role} />
       
       <main className="flex-1 py-8 px-6">
         <div className="max-w-7xl mx-auto">

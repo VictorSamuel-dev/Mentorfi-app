@@ -626,9 +626,19 @@ export async function registerRoutes(
         status: "pending",
       });
 
-      // Send notification to mentor
       const mentor = await storage.getUser(toUserId);
       const mentee = await storage.getUser(fromUserId);
+      
+      await storage.createNotification({
+        userId: toUserId,
+        type: "connection_request",
+        title: "New Connection Request",
+        content: `${mentee?.firstName || "A mentee"} has requested to connect with you.`,
+        entityType: "connection",
+        entityId: connection.id,
+        isRead: false,
+      });
+
       if (mentor?.email && mentee) {
         notify(
           mentor.email,
@@ -672,7 +682,23 @@ export async function registerRoutes(
 
       const updated = await storage.updateConnectionStatus(connectionId, "approved");
       
-      // Send notification to mentee
+      await storage.createNotification({
+        userId: connection.fromUserId,
+        type: "connection_approved",
+        title: "Connection Approved",
+        content: `${mentor?.firstName || "Your mentor"} has approved your connection request. You can now start messaging!`,
+        entityType: "connection",
+        entityId: connectionId,
+        isRead: false,
+      });
+
+      await storage.logAnalyticsEvent({
+        userId: req.session.userId!,
+        eventType: "connection_approved",
+        subjectUserId: connection.fromUserId,
+        connectionId,
+      });
+      
       const mentee = await storage.getUser(connection.fromUserId);
       if (mentee?.email) {
         notify(
@@ -821,6 +847,25 @@ export async function registerRoutes(
         connectionId,
         senderId: userId,
         content: content.trim(),
+      });
+
+      const otherUserId = connection.fromUserId === userId ? connection.toUserId : connection.fromUserId;
+      const sender = await storage.getUser(userId);
+      await storage.createNotification({
+        userId: otherUserId,
+        type: "new_message",
+        title: "New Message",
+        content: `${sender?.firstName || "Someone"} sent you a message.`,
+        entityType: "message",
+        entityId: connectionId,
+        isRead: false,
+      });
+
+      await storage.logAnalyticsEvent({
+        userId,
+        eventType: "message_sent",
+        subjectUserId: otherUserId,
+        connectionId,
       });
 
       const newCount = messageCount + 1;
@@ -998,6 +1043,289 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Revoke badge error:", error);
       res.status(500).json({ error: "Failed to revoke badge" });
+    }
+  });
+
+  // =====================
+  // NOTIFICATION ROUTES
+  // =====================
+
+  app.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      const notifs = await storage.getNotificationsForUser(req.session.userId!);
+      res.json(notifs);
+    } catch (error) {
+      console.error("Get notifications error:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", requireAuth, async (req, res) => {
+    try {
+      const count = await storage.getUnreadNotificationCount(req.session.userId!);
+      res.json({ count });
+    } catch (error) {
+      console.error("Get unread count error:", error);
+      res.status(500).json({ error: "Failed to fetch count" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+    try {
+      await storage.markNotificationRead(parseInt(req.params.id), req.session.userId!);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Mark notification read error:", error);
+      res.status(500).json({ error: "Failed to mark as read" });
+    }
+  });
+
+  app.post("/api/notifications/mark-all-read", requireAuth, async (req, res) => {
+    try {
+      await storage.markAllNotificationsRead(req.session.userId!);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Mark all read error:", error);
+      res.status(500).json({ error: "Failed to mark all as read" });
+    }
+  });
+
+  // =====================
+  // REVIEW ROUTES
+  // =====================
+
+  app.post("/api/reviews", requireAuth, async (req, res) => {
+    try {
+      const { connectionId, revieweeId, rating, comment } = req.body;
+      const reviewerId = req.session.userId!;
+
+      if (!connectionId || !revieweeId || !rating) {
+        return res.status(400).json({ error: "connectionId, revieweeId, and rating are required" });
+      }
+
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Rating must be between 1 and 5" });
+      }
+
+      const connection = await storage.getConnection(connectionId);
+      if (!connection || connection.status !== "approved") {
+        return res.status(400).json({ error: "Connection must be approved to leave a review" });
+      }
+
+      if (connection.fromUserId !== reviewerId && connection.toUserId !== reviewerId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const existing = await storage.getReviewForConnection(connectionId, reviewerId);
+      if (existing) {
+        return res.status(400).json({ error: "You already reviewed this connection" });
+      }
+
+      const review = await storage.createReview({
+        connectionId,
+        reviewerId,
+        revieweeId,
+        rating,
+        comment: comment?.trim() || null,
+      });
+
+      const reviewer = await storage.getUser(reviewerId);
+      await storage.createNotification({
+        userId: revieweeId,
+        type: "review_received",
+        title: "New Review",
+        content: `${reviewer?.firstName || "Someone"} left you a ${rating}-star review.`,
+        entityType: "review",
+        entityId: review.id,
+        isRead: false,
+      });
+
+      await storage.logAnalyticsEvent({
+        userId: reviewerId,
+        eventType: "review_submitted",
+        subjectUserId: revieweeId,
+        connectionId,
+      });
+
+      res.json(review);
+    } catch (error) {
+      console.error("Create review error:", error);
+      res.status(500).json({ error: "Failed to create review" });
+    }
+  });
+
+  app.get("/api/reviews/user/:userId", requireAuth, async (req, res) => {
+    try {
+      const reviews = await storage.getReviewsForUser(req.params.userId);
+      const rating = await storage.getAverageRating(req.params.userId);
+      res.json({ reviews, averageRating: rating.average, totalReviews: rating.count });
+    } catch (error) {
+      console.error("Get reviews error:", error);
+      res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+  });
+
+  app.get("/api/reviews/connection/:connectionId", requireAuth, async (req, res) => {
+    try {
+      const review = await storage.getReviewForConnection(
+        parseInt(req.params.connectionId),
+        req.session.userId!
+      );
+      res.json({ review: review || null });
+    } catch (error) {
+      console.error("Get review for connection error:", error);
+      res.status(500).json({ error: "Failed to fetch review" });
+    }
+  });
+
+  // =====================
+  // MEETING ROUTES
+  // =====================
+
+  app.post("/api/meetings", requireAuth, async (req, res) => {
+    try {
+      const { connectionId, title, scheduledAt, durationMinutes, format, location, notes } = req.body;
+      const schedulerId = req.session.userId!;
+
+      if (!connectionId || !title || !scheduledAt) {
+        return res.status(400).json({ error: "connectionId, title, and scheduledAt are required" });
+      }
+
+      const connection = await storage.getConnection(connectionId);
+      if (!connection || connection.status !== "approved") {
+        return res.status(400).json({ error: "Connection must be approved to schedule a meeting" });
+      }
+
+      if (connection.fromUserId !== schedulerId && connection.toUserId !== schedulerId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const meeting = await storage.createMeeting({
+        connectionId,
+        schedulerId,
+        title,
+        scheduledAt: new Date(scheduledAt),
+        durationMinutes: durationMinutes || 30,
+        format: format || "video_call",
+        location: location || null,
+        notes: notes || null,
+        status: "scheduled",
+      });
+
+      const otherUserId = connection.fromUserId === schedulerId ? connection.toUserId : connection.fromUserId;
+      const scheduler = await storage.getUser(schedulerId);
+      await storage.createNotification({
+        userId: otherUserId,
+        type: "meeting_scheduled",
+        title: "Meeting Scheduled",
+        content: `${scheduler?.firstName || "Someone"} scheduled a meeting: "${title}"`,
+        entityType: "meeting",
+        entityId: meeting.id,
+        isRead: false,
+      });
+
+      await storage.logAnalyticsEvent({
+        userId: schedulerId,
+        eventType: "meeting_scheduled",
+        subjectUserId: otherUserId,
+        connectionId,
+      });
+
+      res.json(meeting);
+    } catch (error) {
+      console.error("Create meeting error:", error);
+      res.status(500).json({ error: "Failed to create meeting" });
+    }
+  });
+
+  app.get("/api/meetings", requireAuth, async (req, res) => {
+    try {
+      const meetingsList = await storage.getMeetingsForUser(req.session.userId!);
+      res.json(meetingsList);
+    } catch (error) {
+      console.error("Get meetings error:", error);
+      res.status(500).json({ error: "Failed to fetch meetings" });
+    }
+  });
+
+  app.patch("/api/meetings/:id/status", requireAuth, async (req, res) => {
+    try {
+      const meetingId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      if (!["completed", "cancelled"].includes(status)) {
+        return res.status(400).json({ error: "Status must be 'completed' or 'cancelled'" });
+      }
+
+      const meeting = await storage.getMeeting(meetingId);
+      if (!meeting) {
+        return res.status(404).json({ error: "Meeting not found" });
+      }
+
+      const connection = await storage.getConnection(meeting.connectionId);
+      if (!connection) {
+        return res.status(404).json({ error: "Connection not found" });
+      }
+
+      const userId = req.session.userId!;
+      if (connection.fromUserId !== userId && connection.toUserId !== userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const updated = await storage.updateMeetingStatus(meetingId, status);
+
+      const otherUserId = connection.fromUserId === userId ? connection.toUserId : connection.fromUserId;
+      const user = await storage.getUser(userId);
+      await storage.createNotification({
+        userId: otherUserId,
+        type: "meeting_updated",
+        title: `Meeting ${status === "completed" ? "Completed" : "Cancelled"}`,
+        content: `${user?.firstName || "Someone"} marked the meeting "${meeting.title}" as ${status}.`,
+        entityType: "meeting",
+        entityId: meetingId,
+        isRead: false,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update meeting status error:", error);
+      res.status(500).json({ error: "Failed to update meeting" });
+    }
+  });
+
+  // =====================
+  // ANALYTICS ROUTES
+  // =====================
+
+  app.get("/api/analytics/mentor", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "mentor") {
+        return res.status(403).json({ error: "Mentor access required" });
+      }
+      const analytics = await storage.getMentorAnalytics(req.session.userId!);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Get mentor analytics error:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  app.post("/api/analytics/profile-view", requireAuth, async (req, res) => {
+    try {
+      const { userId: viewedUserId } = req.body;
+      if (!viewedUserId || viewedUserId === req.session.userId) {
+        return res.json({ success: true });
+      }
+      await storage.logAnalyticsEvent({
+        userId: req.session.userId!,
+        eventType: "profile_view",
+        subjectUserId: viewedUserId,
+      });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Log profile view error:", error);
+      res.status(500).json({ error: "Failed to log view" });
     }
   });
 

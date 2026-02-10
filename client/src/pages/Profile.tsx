@@ -200,7 +200,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header isAuthenticated={true} user={user} />
+      <Header isAuthenticated={true} user={user} role={user.role} />
       
       <main className="flex-1 py-8 px-6">
         <div className="max-w-2xl mx-auto">

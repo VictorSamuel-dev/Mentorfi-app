@@ -26,6 +26,8 @@ import Settings from "@/pages/Settings";
 import Premium from "@/pages/Premium";
 import Welcome from "@/pages/Welcome";
 import Onboarding from "@/pages/Onboarding";
+import MeetingsPage from "@/pages/Meetings";
+import AnalyticsPage from "@/pages/Analytics";
 
 function Router() {
   return (
@@ -51,6 +53,8 @@ function Router() {
       <Route path="/premium" component={Premium} />
       <Route path="/welcome" component={Welcome} />
       <Route path="/onboarding" component={Onboarding} />
+      <Route path="/meetings" component={MeetingsPage} />
+      <Route path="/analytics" component={AnalyticsPage} />
       <Route component={NotFound} />
     </Switch>
   );
