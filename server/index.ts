@@ -75,6 +75,8 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+app.set("trust proxy", 1);
+
 const SessionStore = MemoryStore(session);
 app.use(
   session({
@@ -88,7 +90,9 @@ app.use(
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
+    proxy: process.env.NODE_ENV === "production",
   })
 );
 
