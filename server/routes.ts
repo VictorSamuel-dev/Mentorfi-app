@@ -298,6 +298,7 @@ export async function registerRoutes(
     try {
       const user = await storage.getUser(req.session.userId!);
       if (!user) {
+        console.error("Checkout: user not found for session userId:", req.session.userId);
         return res.status(404).json({ error: "User not found" });
       }
 
@@ -308,16 +309,21 @@ export async function registerRoutes(
 
       let customerId = user.stripeCustomerId;
       if (!customerId) {
-        const customer = await stripeService.createCustomer(user.email, user.id);
-        await storage.updateUserStripeInfo(user.id, { stripeCustomerId: customer.id });
-        customerId = customer.id;
+        try {
+          const customer = await stripeService.createCustomer(user.email, user.id);
+          await storage.updateUserStripeInfo(user.id, { stripeCustomerId: customer.id });
+          customerId = customer.id;
+        } catch (custErr: any) {
+          console.error("Stripe customer creation failed:", custErr?.message || custErr);
+          return res.status(500).json({ error: "Failed to create Stripe customer" });
+        }
       }
 
       const proto = req.headers['x-forwarded-proto'] || req.protocol;
       const host = req.get('host');
       const baseUrl = `${proto}://${host}`;
 
-      const session = await stripeService.createCheckoutSession(
+      const checkoutSession = await stripeService.createCheckoutSession(
         customerId,
         priceId,
         `${baseUrl}/premium?success=true`,
@@ -325,10 +331,12 @@ export async function registerRoutes(
         user.id
       );
 
-      res.json({ url: session.url });
+      res.json({ url: checkoutSession.url });
     } catch (error: any) {
       console.error("Checkout error:", error?.message || error);
-      console.error("Checkout error details:", error?.raw?.message || error?.statusCode || "unknown");
+      if (error?.raw) {
+        console.error("Stripe API error:", error.raw.message, "code:", error.raw.code, "status:", error.raw.statusCode);
+      }
       res.status(500).json({ error: "Failed to create checkout session" });
     }
   });
