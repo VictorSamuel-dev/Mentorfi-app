@@ -27,7 +27,7 @@ Preferred communication style: Simple, everyday language.
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
 - **API Pattern**: RESTful JSON API under /api prefix
-- **Authentication**: Session-based with express-session and MemoryStore (development)
+- **Authentication**: Session-based with express-session and connect-pg-simple (PostgreSQL-backed sessions, table: user_sessions)
 - **Password Security**: scrypt-based hashing with timing-safe comparison
 
 ### Data Layer
