@@ -174,7 +174,9 @@ export async function registerRoutes(
         firstName, lastName, company, jobTitle, interests, targetCompanies, profileImageUrl,
         school, program, gradYear,
         menteeGoals, menteeGoalStatement,
-        maxConnectionsPerQuarter, preferredFormats, requiredMaterials
+        industry, yearsExperience, expertise, bio,
+        maxConnectionsPerQuarter, preferredFormats, requiredMaterials,
+        onboardingComplete
       } = req.body;
       
       // Validate menteeGoals (max 3, must be from allowed options)
@@ -213,9 +215,14 @@ export async function registerRoutes(
         gradYear,
         menteeGoals: normalizedGoals,
         menteeGoalStatement: normalizedStatement,
+        industry,
+        yearsExperience,
+        expertise,
+        bio,
         maxConnectionsPerQuarter,
         preferredFormats,
         requiredMaterials,
+        onboardingComplete,
       });
 
       if (!updated) {
@@ -847,7 +854,7 @@ export async function registerRoutes(
     }
   });
 
-  // Get suggested mentors (interest-based, no shared event required)
+  // Get suggested mentors (interest-based, no shared event required, supports filtering)
   app.get("/api/mentors/suggested", requireAuth, async (req, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
@@ -855,7 +862,14 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Only mentees can view suggested mentors" });
       }
       
-      const mentors = await storage.getSuggestedMentors(req.session.userId!);
+      const filters = {
+        company: req.query.company as string | undefined,
+        industry: req.query.industry as string | undefined,
+        interest: req.query.interest as string | undefined,
+        search: req.query.search as string | undefined,
+      };
+      
+      const mentors = await storage.getSuggestedMentors(req.session.userId!, filters);
       res.json(mentors);
     } catch (error) {
       console.error("Get suggested mentors error:", error);

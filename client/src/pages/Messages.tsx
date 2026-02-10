@@ -264,7 +264,7 @@ export default function Messages() {
                         </div>
                         {!user?.isPremium && (
                           <p className="text-xs text-muted-foreground mt-2 text-center">
-                            {2 - selectedConversation.messageCount} free messages remaining
+                            {Math.max(0, 4 - selectedConversation.messageCount)} free messages remaining
                           </p>
                         )}
                       </div>

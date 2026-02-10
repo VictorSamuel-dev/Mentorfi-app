@@ -108,8 +108,14 @@ export async function getMentors(): Promise<UserProfileWithBadges[]> {
   return res.json();
 }
 
-export async function getSuggestedMentors(): Promise<UserProfileWithBadges[]> {
-  const res = await fetch("/api/mentors/suggested", { credentials: "include" });
+export async function getSuggestedMentors(filters?: { company?: string; industry?: string; interest?: string; search?: string }): Promise<UserProfileWithBadges[]> {
+  const params = new URLSearchParams();
+  if (filters?.company) params.set("company", filters.company);
+  if (filters?.industry) params.set("industry", filters.industry);
+  if (filters?.interest) params.set("interest", filters.interest);
+  if (filters?.search) params.set("search", filters.search);
+  const qs = params.toString();
+  const res = await fetch(`/api/mentors/suggested${qs ? `?${qs}` : ""}`, { credentials: "include" });
   return res.json();
 }
 

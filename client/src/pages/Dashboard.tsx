@@ -12,10 +12,11 @@ import { MatchNotification } from "@/components/MatchNotification";
 import { ProfileDialog, type ProfileDialogData } from "@/components/ProfileDialog";
 import { EventDetailsDialog } from "@/components/EventDetailsDialog";
 import { Link, useLocation } from "wouter";
-import { Calendar, Users, MessageSquare, ArrowRight, Sparkles } from "lucide-react";
+import { Calendar, Users, MessageSquare, ArrowRight, Sparkles, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { getEvents, getUnlockedMatches, getConversations, cancelRsvp, rsvpToEvent } from "@/lib/api";
+import { getProfileCompleteness } from "@shared/schema";
 import type { EventWithAttendees, UnlockedMatchData, ConversationData, Event, Connection } from "@shared/schema";
 
 async function getApprovedConnections(): Promise<Connection[]> {
@@ -187,6 +188,43 @@ export default function Dashboard() {
               Here's what's happening with your mentorship journey
             </p>
           </div>
+
+          {(() => {
+            const { percent, missingFields } = getProfileCompleteness(user);
+            if (percent >= 100) return null;
+            return (
+              <Card className="mb-6 border-primary/20" data-testid="card-profile-completion">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">
+                        Your profile is {percent}% complete
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {missingFields.length <= 3
+                          ? `Add your ${missingFields.join(", ").toLowerCase()} to get better matches.`
+                          : `Complete ${missingFields.length} more fields to get the best matches.`}
+                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full transition-all"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                        <Link href={user.role === "mentor" && !user.onboardingComplete ? "/onboarding" : "/profile"}>
+                          <Button size="sm" variant="outline" data-testid="button-complete-profile">
+                            Complete profile
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {stats.map((stat) => (

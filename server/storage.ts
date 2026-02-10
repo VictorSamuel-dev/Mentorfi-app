@@ -97,7 +97,7 @@ export interface IStorage {
   getMatchesForUser(userId: string): Promise<MatchData[]>;
   getMentorsForBrowsing(userId: string): Promise<UserProfileWithBadges[]>;
   getUnlockedMatchesForUser(userId: string): Promise<UnlockedMatchData[]>;
-  getSuggestedMentors(userId: string): Promise<UserProfileWithBadges[]>;
+  getSuggestedMentors(userId: string, filters?: { company?: string; industry?: string; interest?: string; search?: string }): Promise<UserProfileWithBadges[]>;
   computeOverlapScore(userId1: string, userId2: string): Promise<{ score: number; sharedInterests: string[]; sharedCompanies: string[] }>;
   upsertEventMatchesForEvent(eventId: number): Promise<void>;
   generateInterestBasedMatches(userId: string): Promise<void>;
@@ -838,8 +838,7 @@ export class DatabaseStorage implements IStorage {
     return results;
   }
 
-  // Get suggested mentors (interest-based, no shared event required)
-  async getSuggestedMentors(userId: string): Promise<UserProfileWithBadges[]> {
+  async getSuggestedMentors(userId: string, filters?: { company?: string; industry?: string; interest?: string; search?: string }): Promise<UserProfileWithBadges[]> {
     const user = await this.getUser(userId);
     if (!user || user.role !== "mentee") return [];
     
@@ -848,21 +847,49 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.role, "mentor"));
     
-    // Calculate overlap scores and sort
+    let filtered = mentors;
+    
+    if (filters?.company) {
+      const q = filters.company.toLowerCase();
+      filtered = filtered.filter(m => m.company?.toLowerCase().includes(q));
+    }
+    if (filters?.industry) {
+      const q = filters.industry.toLowerCase();
+      filtered = filtered.filter(m => m.industry?.toLowerCase() === q);
+    }
+    if (filters?.interest) {
+      const q = filters.interest.toLowerCase();
+      filtered = filtered.filter(m => 
+        m.interests?.some(i => i.toLowerCase().includes(q)) ||
+        m.expertise?.some(e => e.toLowerCase().includes(q))
+      );
+    }
+    if (filters?.search) {
+      const q = filters.search.toLowerCase();
+      filtered = filtered.filter(m => 
+        m.firstName?.toLowerCase().includes(q) ||
+        m.lastName?.toLowerCase().includes(q) ||
+        m.company?.toLowerCase().includes(q) ||
+        m.jobTitle?.toLowerCase().includes(q) ||
+        m.industry?.toLowerCase().includes(q) ||
+        m.interests?.some(i => i.toLowerCase().includes(q)) ||
+        m.expertise?.some(e => e.toLowerCase().includes(q))
+      );
+    }
+    
     const mentorsWithScores: { mentor: User; score: number }[] = [];
     
-    for (const mentor of mentors) {
+    for (const mentor of filtered) {
       const { score } = await this.computeOverlapScore(userId, mentor.id);
       mentorsWithScores.push({ mentor, score });
     }
     
-    // Sort by score descending, take top 20
     mentorsWithScores.sort((a, b) => b.score - a.score);
     const topMentors = mentorsWithScores.slice(0, 20);
     
     const results: UserProfileWithBadges[] = [];
     
-    for (const { mentor, score } of topMentors) {
+    for (const { mentor } of topMentors) {
       const { password, ...profile } = mentor;
       
       const connection = await this.getConnectionBetweenUsers(userId, mentor.id);

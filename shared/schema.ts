@@ -28,9 +28,14 @@ export const users = pgTable("users", {
   menteeGoals: text("mentee_goals").array().default([]),
   menteeGoalStatement: text("mentee_goal_statement"),
   // Mentor-specific fields
+  industry: text("industry"),
+  yearsExperience: integer("years_experience"),
+  expertise: text("expertise").array(),
+  bio: text("bio"),
   maxConnectionsPerQuarter: integer("max_connections_per_quarter").default(2),
   preferredFormats: jsonb("preferred_formats").default([]),
   requiredMaterials: jsonb("required_materials").default({}),
+  onboardingComplete: boolean("onboarding_complete").default(false),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -49,9 +54,14 @@ export const insertUserSchema = createInsertSchema(users).pick({
   gradYear: true,
   menteeGoals: true,
   menteeGoalStatement: true,
+  industry: true,
+  yearsExperience: true,
+  expertise: true,
+  bio: true,
   maxConnectionsPerQuarter: true,
   preferredFormats: true,
   requiredMaterials: true,
+  onboardingComplete: true,
 });
 
 // Available mentee goal options for matching
@@ -67,8 +77,55 @@ export const MENTEE_GOAL_OPTIONS = [
   "First job / internship guidance",
 ] as const;
 
+export const INDUSTRY_OPTIONS = [
+  "Technology",
+  "Finance & Banking",
+  "Consulting",
+  "Healthcare",
+  "Energy",
+  "Consumer Goods",
+  "Media & Entertainment",
+  "Telecommunications",
+  "Automotive",
+  "Aerospace & Defense",
+  "Retail",
+  "Real Estate",
+  "Education",
+  "Government",
+  "Non-profit",
+  "Other",
+] as const;
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export function getProfileCompleteness(user: Omit<User, 'password'> | null): { percent: number; missingFields: string[] } {
+  if (!user) return { percent: 0, missingFields: [] };
+
+  const missing: string[] = [];
+
+  if (!user.firstName) missing.push("First name");
+  if (!user.lastName) missing.push("Last name");
+
+  if (user.role === "mentor") {
+    if (!user.company) missing.push("Company");
+    if (!user.jobTitle) missing.push("Job title");
+    if (!user.industry) missing.push("Industry");
+    if (!user.interests || user.interests.length === 0) missing.push("Interests");
+    if (!user.bio) missing.push("Bio");
+    const totalFields = 7;
+    const filled = totalFields - missing.length;
+    return { percent: Math.round((filled / totalFields) * 100), missingFields: missing };
+  }
+
+  if (!user.school) missing.push("School");
+  if (!user.interests || user.interests.length === 0) missing.push("Interests");
+  if (!user.targetCompanies || user.targetCompanies.length === 0) missing.push("Target companies");
+  if (!user.menteeGoals || user.menteeGoals.length === 0) missing.push("Mentorship goals");
+  const totalFields = 6;
+  const filled = totalFields - missing.length;
+  return { percent: Math.round((filled / totalFields) * 100), missingFields: missing };
+}
 
 // Events table
 export const events = pgTable("events", {

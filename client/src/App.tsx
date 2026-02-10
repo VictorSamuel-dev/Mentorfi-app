@@ -24,6 +24,8 @@ import Blog from "@/pages/Blog";
 import Careers from "@/pages/Careers";
 import Settings from "@/pages/Settings";
 import Premium from "@/pages/Premium";
+import Welcome from "@/pages/Welcome";
+import Onboarding from "@/pages/Onboarding";
 
 function Router() {
   return (
@@ -47,6 +49,8 @@ function Router() {
       <Route path="/careers" component={Careers} />
       <Route path="/settings" component={Settings} />
       <Route path="/premium" component={Premium} />
+      <Route path="/welcome" component={Welcome} />
+      <Route path="/onboarding" component={Onboarding} />
       <Route component={NotFound} />
     </Switch>
   );

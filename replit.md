@@ -8,7 +8,11 @@ Key features include:
 - Event discovery and RSVP management (career fairs, info sessions, workshops)
 - Smart matching based on shared events, interests, and target companies
 - Gated messaging where mentors approve connection requests before messaging
-- Freemium model with message limits for free users and unlimited messaging for premium
+- Freemium model with 4-message limit for free users and unlimited messaging for premium ($9.99/month via Stripe)
+- Mentor onboarding: 3-step guided flow collecting company, role, industry, expertise, and bio
+- Post-signup Welcome page with role-specific guidance
+- Profile completion tracking with percentage banner on Dashboard
+- Mentor search/filtering by text search and industry on Browse Mentors tab
 
 ## User Preferences
 

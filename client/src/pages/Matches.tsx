@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -10,14 +10,17 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Sparkles, Users, Bell, MapPin, Calendar, Unlock } from "lucide-react";
+import { Sparkles, Users, Bell, MapPin, Calendar, Unlock, Search, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getUnlockedMatches, getSuggestedMentors, getPendingConnections, requestConnection, approveConnection, declineConnection } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, Redirect } from "wouter";
 import type { UnlockedMatchData, UserProfileWithBadges, Connection } from "@shared/schema";
+import { INDUSTRY_OPTIONS } from "@shared/schema";
 import { format } from "date-fns";
 import { UserBadge } from "@/components/UserBadge";
 
@@ -25,20 +28,39 @@ export default function Matches() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  
+  const [searchText, setSearchText] = useState("");
+  const [industryFilter, setIndustryFilter] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchText), 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
 
-  // Unlocked matches (event-based)
   const { data: unlockedMatches = [], isLoading: matchesLoading } = useQuery<UnlockedMatchData[]>({
     queryKey: ["/api/matches/new"],
     queryFn: getUnlockedMatches,
     enabled: !!user,
   });
 
-  // Suggested mentors (interest-based, for Browse Mentors tab)
+  const mentorFilters = {
+    search: debouncedSearch || undefined,
+    industry: industryFilter || undefined,
+  };
+
   const { data: suggestedMentors = [], isLoading: mentorsLoading } = useQuery<UserProfileWithBadges[]>({
-    queryKey: ["/api/mentors/suggested"],
-    queryFn: getSuggestedMentors,
+    queryKey: ["/api/mentors/suggested", mentorFilters],
+    queryFn: () => getSuggestedMentors(mentorFilters),
     enabled: !!user && user.role === "mentee",
   });
+  
+  const hasActiveFilters = !!debouncedSearch || !!industryFilter;
+  
+  const clearFilters = () => {
+    setSearchText("");
+    setIndustryFilter("");
+  };
   
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<ProfileDialogData | null>(null);
@@ -52,7 +74,7 @@ export default function Matches() {
   const connectMutation = useMutation({
     mutationFn: (toUserId: string) => requestConnection(toUserId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/mentors/suggested"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mentors/suggested"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/matches/new"] });
       toast({ title: "Connection request sent!" });
     },
@@ -281,6 +303,35 @@ export default function Matches() {
             </TabsContent>
 
             <TabsContent value="mentors" className="space-y-4">
+              <div className="flex items-center gap-3 flex-wrap" data-testid="mentor-filters">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, company, or skill..."
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    className="pl-9"
+                    data-testid="input-mentor-search"
+                  />
+                </div>
+                <Select value={industryFilter} onValueChange={setIndustryFilter}>
+                  <SelectTrigger className="w-[180px]" data-testid="select-industry">
+                    <SelectValue placeholder="Industry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INDUSTRY_OPTIONS.map((industry) => (
+                      <SelectItem key={industry} value={industry}>{industry}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters} data-testid="button-clear-filters">
+                    <X className="h-4 w-4 mr-1" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+              
               {mentorsLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
@@ -290,8 +341,19 @@ export default function Matches() {
               ) : suggestedMentors.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">Mentors will appear once approved</p>
-                  <p className="text-sm">Our mentor network is growing. Add interests to your profile so we can match you when mentors join.</p>
+                  <p className="text-lg font-medium">
+                    {hasActiveFilters ? "No mentors match your filters" : "Mentors will appear once approved"}
+                  </p>
+                  <p className="text-sm">
+                    {hasActiveFilters 
+                      ? "Try adjusting your search or clearing filters."
+                      : "Our mentor network is growing. Add interests to your profile so we can match you when mentors join."}
+                  </p>
+                  {hasActiveFilters && (
+                    <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters} data-testid="button-clear-filters-empty">
+                      Clear all filters
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="grid gap-4">

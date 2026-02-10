@@ -48,7 +48,7 @@ export default function Signup() {
       });
       await refetch();
       toast({ title: "Account created successfully!" });
-      setLocation("/dashboard");
+      setLocation("/welcome");
     } catch (err: any) {
       setError(err.message || "Could not create account");
       toast({
