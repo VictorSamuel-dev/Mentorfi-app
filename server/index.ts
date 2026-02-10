@@ -3,7 +3,8 @@ import session from "express-session";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import MemoryStore from "memorystore";
+import pgSession from "connect-pg-simple";
+import pg from "pg";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
@@ -77,14 +78,17 @@ app.use(express.urlencoded({ extended: false }));
 
 app.set("trust proxy", 1);
 
-const SessionStore = MemoryStore(session);
+const PgStore = pgSession(session);
+const sessionPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "mentorfy-dev-secret-key",
     resave: false,
     saveUninitialized: false,
-    store: new SessionStore({
-      checkPeriod: 86400000,
+    store: new PgStore({
+      pool: sessionPool as any,
+      createTableIfMissing: true,
+      tableName: "user_sessions",
     }),
     cookie: {
       secure: process.env.NODE_ENV === "production",
