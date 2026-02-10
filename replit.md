@@ -101,6 +101,13 @@ Preferred communication style: Simple, everyday language.
 - **Frontend Pages**: `/pricing` (Stripe checkout), `/premium` (subscription management)
 - **Database**: `stripe_customer_id` and `stripe_subscription_id` columns on users table; stripe schema managed automatically by stripe-replit-sync
 
+### SendGrid Email Integration
+- **SendGrid Client**: `server/sendgridClient.ts` - fetches credentials from Replit SendGrid connector
+- **Email Service**: `server/emailService.ts` - branded HTML email templates for all notification types
+- **Email Types**: Welcome (signup), Connection Request, Connection Approved, New Message, Meeting Scheduled, Review Received
+- **Integration**: Non-blocking email sending via `.catch(() => {})` in all route handlers
+- **From Address**: Configured through SendGrid connector (mentorfy.app@gmail.com)
+
 ### Environment Variables Required
 - `DATABASE_URL`: PostgreSQL connection string
 - `SESSION_SECRET`: Session encryption key (optional, has dev fallback)

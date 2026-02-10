@@ -8,17 +8,10 @@ import { z } from "zod";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
+import { emailService } from "./emailService";
 
 // Message limit for free users
 const FREE_MESSAGE_LIMIT = 4;
-
-// Notification service (console stub for MVP)
-function notify(to: string, subject: string, body: string) {
-  console.log(`[NOTIFICATION] To: ${to}`);
-  console.log(`[NOTIFICATION] Subject: ${subject}`);
-  console.log(`[NOTIFICATION] Body: ${body}`);
-  console.log("---");
-}
 
 // Auth middleware
 function requireAuth(req: Request, res: Response, next: Function) {
@@ -86,6 +79,15 @@ export async function registerRoutes(
 
       req.session.userId = user.id;
       const { password: _, ...profile } = user;
+
+      if (user.email) {
+        emailService.sendWelcomeEmail(
+          user.email,
+          user.firstName || "there",
+          user.role || "mentee"
+        ).catch(() => {});
+      }
+
       res.json({ user: profile });
     } catch (error) {
       console.error("Registration error:", error);
@@ -640,11 +642,12 @@ export async function registerRoutes(
       });
 
       if (mentor?.email && mentee) {
-        notify(
+        emailService.sendConnectionRequestEmail(
           mentor.email,
-          "New mentorship request!",
-          `${mentee.firstName || "A mentee"} has requested to connect with you. Log in to review and respond.`
-        );
+          mentor.firstName || "Mentor",
+          `${mentee.firstName || ""} ${mentee.lastName || ""}`.trim() || "A mentee",
+          message
+        ).catch(() => {});
       }
 
       res.json(connection);
@@ -701,11 +704,11 @@ export async function registerRoutes(
       
       const mentee = await storage.getUser(connection.fromUserId);
       if (mentee?.email) {
-        notify(
+        emailService.sendConnectionApprovedEmail(
           mentee.email,
-          "Your connection request was approved!",
-          `Great news! ${mentor?.firstName || "Your mentor"} has approved your connection request. You can now start messaging.`
-        );
+          mentee.firstName || "there",
+          `${mentor?.firstName || ""} ${mentor?.lastName || ""}`.trim() || "Your mentor"
+        ).catch(() => {});
       }
       
       res.json(updated);
@@ -860,6 +863,15 @@ export async function registerRoutes(
         entityId: connectionId,
         isRead: false,
       });
+
+      const recipient = await storage.getUser(otherUserId);
+      if (recipient?.email) {
+        emailService.sendNewMessageEmail(
+          recipient.email,
+          recipient.firstName || "there",
+          `${sender?.firstName || ""} ${sender?.lastName || ""}`.trim() || "Someone"
+        ).catch(() => {});
+      }
 
       await storage.logAnalyticsEvent({
         userId,
@@ -1140,6 +1152,16 @@ export async function registerRoutes(
         isRead: false,
       });
 
+      const reviewee = await storage.getUser(revieweeId);
+      if (reviewee?.email) {
+        emailService.sendReviewReceivedEmail(
+          reviewee.email,
+          reviewee.firstName || "there",
+          `${reviewer?.firstName || ""} ${reviewer?.lastName || ""}`.trim() || "Someone",
+          rating
+        ).catch(() => {});
+      }
+
       await storage.logAnalyticsEvent({
         userId: reviewerId,
         eventType: "review_submitted",
@@ -1223,6 +1245,18 @@ export async function registerRoutes(
         entityId: meeting.id,
         isRead: false,
       });
+
+      const otherUser = await storage.getUser(otherUserId);
+      if (otherUser?.email) {
+        emailService.sendMeetingScheduledEmail(
+          otherUser.email,
+          otherUser.firstName || "there",
+          `${scheduler?.firstName || ""} ${scheduler?.lastName || ""}`.trim() || "Someone",
+          title,
+          scheduledAt,
+          format || "video_call"
+        ).catch(() => {});
+      }
 
       await storage.logAnalyticsEvent({
         userId: schedulerId,
