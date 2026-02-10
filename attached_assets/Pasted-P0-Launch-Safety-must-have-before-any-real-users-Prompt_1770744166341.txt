@@ -1,0 +1,127 @@
+P0 — Launch Safety (must-have before any real users)
+Prompt 1: Remove demo placeholders + add empty states
+
+Task (P0): Remove demo placeholder content before launch.
+Remove all hardcoded/mock Mentor and Event placeholder data (fake profiles, sample cards, dummy events).
+Keep the components and routes, but replace empty lists with professional empty states:
+
+Mentors: “No mentors available yet. Mentor profiles will appear once they’re approved and matched to your goals.”
+
+Events: “No upcoming events yet. Career events and sessions will appear here when available.”
+Ensure the app runs with zero data without errors.
+Output the list of files changed.
+
+Prompt 2: Fix auth/session persistence (no surprise logouts)
+
+Task (P0): Fix session persistence so logged-in users don’t get logged out when navigating (e.g., clicking logo/home).
+Ensure auth state persists across refresh and route changes.
+
+Prevent full page reloads caused by navigation (use client-side routing where applicable).
+
+Ensure tokens/cookies are stored and refreshed correctly.
+
+Verify protected routes remain protected, but authenticated users are not forced back to login unexpectedly.
+Add a quick regression check: login → click logo → still logged in.
+Output root cause and files changed.
+
+Prompt 3: Add invite-only / private beta gating
+
+Task (P0): Implement private beta access controls.
+Add user access states: waitlisted, approved (or betaApproved=true).
+
+Anyone can see public landing pages.
+
+Only approved users can access /app features.
+If a non-approved user logs in, show a “Private beta” page with waitlist messaging and a way to request access.
+Do not add new features beyond gating and status handling.
+Output DB fields + files changed.
+
+P1 — Real Mentor Supply (turn on real mentors safely)
+Prompt 4: Real mentor onboarding (invite → pending → approved)
+
+Task (P1): Transition Mentors from demo to real, invite-only onboarding.
+Add mentor states: invited, pending, approved.
+
+Mentors are only visible to mentees when status = approved.
+Add a simple admin-only approval toggle/button.
+Add an invite flow: admin enters mentor email → invite link/email sent → mentor completes profile → status becomes pending → admin approves to approved.
+Ensure unapproved mentors cannot be discovered or searched.
+Output: schema changes + admin UI location + files changed.
+
+Prompt 5: Minimum viable mentor profile fields
+
+Task (P1): Implement a minimum mentor profile schema + edit screen.
+Add/confirm fields: name, headline/title, company (optional), industries, interests, mentoring topics, availability (lightweight), short bio, LinkedIn URL (optional).
+Require only what’s needed for matching/discovery.
+Ensure mentors can edit profile, but changes require re-approval only if you think necessary (default: no re-approval).
+Output: validation rules + files changed.
+
+P1 — User Trust & Onboarding (email + profile completion)
+Prompt 6: Welcome email + “Complete profile” reminder
+
+Task (P1): Add onboarding emails for new signups.
+On successful signup (after user record is created), send:
+
+Welcome email
+
+“Complete your profile” email (send immediately for now; no scheduler required)
+Use Resend, SendGrid, or Postmark via API. Store keys in environment variables.
+Add EMAIL_ENABLED flag so emails don’t send in dev unless enabled.
+Add safe logging (no sensitive content).
+Output: env vars needed + files changed.
+
+Prompt 7: In-app profile completion banner + % completion
+
+Task (P1): Add a profile completion prompt that nudges new users.
+Add a banner/card in the app dashboard:
+
+Title: “Complete your profile”
+
+Body: “A complete profile helps us surface relevant mentors and opportunities.”
+
+CTA: “Update profile”
+Optionally show a simple completion percentage based on filled required fields.
+Do not change core product flows.
+Output: which fields count + files changed.
+
+P2 — Paywall & Payments (so money goes to you)
+Prompt 8: Stripe Checkout + webhook entitlement (must be webhook-based)
+
+Task (P2): Implement Stripe paywall so payments process to my Stripe account and unlock access automatically.
+Add endpoint to create Stripe Checkout Session using STRIPE_SECRET_KEY and STRIPE_PRICE_ID.
+Add webhook endpoint verified with STRIPE_WEBHOOK_SECRET.
+On checkout.session.completed (and subscription events if subscription), set user plan=pro and subscriptionStatus=active.
+The frontend must unlock access only after webhook confirmation (not just redirect success).
+Add test vs live mode via env vars; never mix keys.
+Output: webhook events used + env vars + files changed.
+
+Prompt 9: Paywall rules + grace handling
+
+Task (P2): Enforce paywall rules cleanly.
+Define what triggers the paywall (e.g., message limit, mentor requests, or feature access).
+Implement server-side enforcement (not UI-only).
+If payment fails/cancels, keep the user on free tier and show a clear message.
+Output: where rules are enforced + test cases.
+
+P2 — Operational Essentials (so live users don’t break you)
+Prompt 10: Basic logging + error handling + rate limits
+
+Task (P2): Add production-safe logging and basic abuse prevention.
+Add centralized error handling for API routes.
+Add basic rate limiting for auth-related endpoints and messaging endpoints.
+Ensure logs avoid secrets and minimize PII.
+Output: what limits are used + files changed.
+
+Prompt 11: Admin panel essentials
+
+Task (P2): Add a minimal admin dashboard for live operations.
+Admin can:
+
+approve users (beta access)
+
+invite/approve mentors
+
+view waitlist entries
+Ensure admin routes are protected and not accessible to normal users.
+Keep it minimal.
+Output: routes + access control approach + files changed.
