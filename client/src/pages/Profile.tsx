@@ -203,7 +203,13 @@ export default function Profile() {
       toast({ title: "Code sent", description: "Check your work email for the verification code." });
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message || "Failed to send code", variant: "destructive" });
+      let msg = "Failed to send code";
+      try {
+        const body = err.message?.split(": ").slice(1).join(": ");
+        const parsed = JSON.parse(body);
+        if (parsed.error) msg = parsed.error;
+      } catch {}
+      toast({ title: "Error", description: msg, variant: "destructive" });
     },
   });
 
@@ -221,7 +227,13 @@ export default function Profile() {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
     onError: (err: any) => {
-      toast({ title: "Verification failed", description: err.message || "Invalid code", variant: "destructive" });
+      let msg = "Invalid or expired code";
+      try {
+        const body = err.message?.split(": ").slice(1).join(": ");
+        const parsed = JSON.parse(body);
+        if (parsed.error) msg = parsed.error;
+      } catch {}
+      toast({ title: "Verification failed", description: msg, variant: "destructive" });
     },
   });
 
