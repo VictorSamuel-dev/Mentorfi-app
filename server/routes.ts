@@ -1637,6 +1637,17 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/set-role", async (req, res) => {
+    const { email, role, secret } = req.body;
+    if (secret !== "mentorfy-admin-2026") return res.status(403).json({ error: "Forbidden" });
+    if (role !== "mentor" && role !== "mentee") return res.status(400).json({ error: "Invalid role" });
+    const { db } = await import("./db");
+    const { users } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const result = await db.update(users).set({ role }).where(eq(users.email, email)).returning({ id: users.id, email: users.email, role: users.role });
+    res.json({ updated: result });
+  });
+
   // Seed badges on server start
   const { seedBadges } = await import("./seed/seedBadges");
   await seedBadges();
