@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,11 +19,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Crown, Camera, Loader2, Check, ShieldCheck, Mail, ArrowRight } from "lucide-react";
+import { Crown, Camera, Loader2, Check, ShieldCheck, Mail, ArrowRight, Sparkles } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { UserProfileWithBadges } from "@shared/schema";
 import { MENTEE_GOAL_OPTIONS } from "@shared/schema";
+
+interface GoalRefinement {
+  refinedStatement: string;
+  actionItems: string[];
+  feedback: string;
+}
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -49,6 +56,34 @@ export default function Profile() {
   const [workEmailInput, setWorkEmailInput] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
+  const [goalRefinement, setGoalRefinement] = useState<GoalRefinement | null>(null);
+  const [refiningGoals, setRefiningGoals] = useState(false);
+
+  const handleRefineGoals = async () => {
+    const goals = form.getValues("menteeGoals") || [];
+    const goalStatement = form.getValues("menteeGoalStatement") || "";
+    if (goals.length === 0 && !goalStatement) {
+      toast({ title: "Select some goals first", description: "Choose your goals and add a statement before refining.", variant: "destructive" });
+      return;
+    }
+    setRefiningGoals(true);
+    setGoalRefinement(null);
+    try {
+      const res = await fetch("/api/ai/refine-goals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ goals, goalStatement }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setGoalRefinement(data);
+    } catch {
+      toast({ title: "Could not refine goals", variant: "destructive" });
+    } finally {
+      setRefiningGoals(false);
+    }
+  };
 
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery<UserProfileWithBadges>({
     queryKey: ["/api/users/profile"],
@@ -651,6 +686,67 @@ export default function Profile() {
                               </FormItem>
                             )}
                           />
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                            onClick={handleRefineGoals}
+                            disabled={refiningGoals}
+                            data-testid="button-refine-goals"
+                          >
+                            {refiningGoals ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3.5 w-3.5" />
+                            )}
+                            {refiningGoals ? "Refining..." : "AI Goal Refinement"}
+                          </Button>
+
+                          {goalRefinement && (
+                            <Card className="bg-muted/50" data-testid="card-goal-refinement">
+                              <CardContent className="p-4 space-y-3">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Sparkles className="h-4 w-4 text-primary" />
+                                  <span className="font-medium text-sm">AI Suggestions</span>
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-medium mb-1">Refined Goal</h4>
+                                  <p className="text-sm text-muted-foreground">{goalRefinement.refinedStatement}</p>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="mt-1 text-xs"
+                                    onClick={() => form.setValue("menteeGoalStatement", goalRefinement.refinedStatement)}
+                                    data-testid="button-use-refined-goal"
+                                  >
+                                    Use this goal statement
+                                  </Button>
+                                </div>
+                                {goalRefinement.actionItems.length > 0 && (
+                                  <div>
+                                    <h4 className="text-sm font-medium mb-1">Suggested Action Steps</h4>
+                                    <ul className="text-sm text-muted-foreground space-y-0.5">
+                                      {goalRefinement.actionItems.map((step, i) => (
+                                        <li key={i} className="flex items-start gap-2">
+                                          <span className="text-primary mt-0.5">&#8226;</span>
+                                          <span>{step}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                {goalRefinement.feedback && (
+                                  <div>
+                                    <h4 className="text-sm font-medium mb-1">Feedback</h4>
+                                    <p className="text-sm text-muted-foreground">{goalRefinement.feedback}</p>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )}
                         </div>
                       )}
 

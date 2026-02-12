@@ -17,6 +17,12 @@ Key features include:
 - Mentor reviews and ratings (5-star system, one review per connection, shown after 3+ messages)
 - Meeting scheduler (video call, phone, in-person formats with status tracking)
 - Mentor analytics dashboard (profile views, connections, messages, meetings, ratings, 7-day activity chart)
+- AI-Powered Features (via OpenAI through Replit AI Integrations):
+  - Conversation Starters: AI-generated icebreakers shown in Messages when conversation has 0 messages
+  - Meeting Prep Summaries: AI prep brief (overview, highlights, topics, questions) on Meetings page via "AI Prep" button
+  - Smarter Matching: AI compatibility scores on match cards via "AI Score" button
+  - Career Path Insights: AI career analysis on Dashboard for mentees via "Get AI Insights" button
+  - Mentee Goal Refinement: AI goal sharpening on Profile page via "AI Goal Refinement" button
 
 ## User Preferences
 

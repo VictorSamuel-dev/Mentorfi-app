@@ -126,6 +126,7 @@ export interface IStorage {
   hasApprovedConnection(userId1: string, userId2: string): Promise<boolean>;
   getUserProfileWithBadges(id: string, viewerId?: string): Promise<UserProfileWithBadges | undefined>;
   getPlatformStats(): Promise<{ mentorCount: number; eventCount: number; connectionCount: number }>;
+  getAllMentors(): Promise<User[]>;
 
   // Notification operations
   createNotification(notification: InsertNotification): Promise<Notification>;
@@ -1086,6 +1087,11 @@ export class DatabaseStorage implements IStorage {
       connectionCount: Number(connectionResult?.count || 0),
     };
   }
+
+  async getAllMentors(): Promise<User[]> {
+    return db.select().from(users).where(eq(users.role, "mentor"));
+  }
+
   // =====================
   // NOTIFICATION OPERATIONS
   // =====================

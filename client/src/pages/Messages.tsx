@@ -8,15 +8,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Send, ArrowLeft, Lock, Sparkles, Calendar } from "lucide-react";
+import { Send, ArrowLeft, Lock, Sparkles, Calendar, Lightbulb, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { getConversations, sendMessage } from "@/lib/api";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, Link } from "wouter";
 import { ReviewForm } from "@/components/ReviewForm";
 import type { ConversationData, Message } from "@shared/schema";
+
+interface ConversationStarter {
+  text: string;
+  category: string;
+}
 
 export default function Messages() {
   const { user, isLoading: authLoading, upgrade } = useAuth();
@@ -62,6 +67,23 @@ export default function Messages() {
   };
 
   const selectedConversation = conversations.find((c) => c.connectionId === selectedId);
+  const hasNoMessages = selectedConversation && selectedConversation.messages.length === 0;
+
+  const { data: startersData, isLoading: startersLoading } = useQuery<{ starters: ConversationStarter[] }>({
+    queryKey: ["/api/ai/conversation-starters", selectedId],
+    queryFn: async () => {
+      const res = await fetch(`/api/ai/conversation-starters/${selectedId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!selectedId && !!hasNoMessages,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const handleUseStarter = (text: string) => {
+    setMessageInput(text);
+  };
 
   const handleSend = () => {
     if (messageInput.trim() && selectedId) {
@@ -197,6 +219,37 @@ export default function Messages() {
 
                     <ScrollArea className="flex-1 p-4">
                       <div className="space-y-4">
+                        {selectedConversation.messages.length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-8 gap-4" data-testid="conversation-starters-section">
+                            <div className="text-center mb-2">
+                              <Lightbulb className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                              <p className="font-medium">Start the conversation</p>
+                              <p className="text-sm text-muted-foreground">
+                                Not sure what to say? Try one of these AI-generated icebreakers
+                              </p>
+                            </div>
+                            {startersLoading ? (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-sm">Generating conversation starters...</span>
+                              </div>
+                            ) : startersData?.starters && startersData.starters.length > 0 ? (
+                              <div className="w-full max-w-md space-y-2">
+                                {startersData.starters.map((starter, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => handleUseStarter(starter.text)}
+                                    className="w-full text-left p-3 rounded-md border hover-elevate transition-colors"
+                                    data-testid={`starter-${i}`}
+                                  >
+                                    <Badge variant="secondary" className="mb-1.5">{starter.category}</Badge>
+                                    <p className="text-sm">{starter.text}</p>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
                         {selectedConversation.messages.map((message: Message) => {
                           const isOwn = message.senderId === user?.id;
                           return (

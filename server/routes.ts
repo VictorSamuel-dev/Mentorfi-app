@@ -9,6 +9,13 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
 import { emailService } from "./emailService";
+import {
+  generateConversationStarters,
+  generateMeetingPrep,
+  scoreMatch,
+  generateCareerInsights,
+  refineGoalStatement,
+} from "./aiService";
 
 // Message limit for free users
 const FREE_MESSAGE_LIMIT = 4;
@@ -1579,6 +1586,142 @@ export async function registerRoutes(
 
   // Register object storage routes
   registerObjectStorageRoutes(app);
+
+  // ── AI-POWERED FEATURES ─────────────────────────────────────────
+  // =====================
+
+  app.get("/api/ai/conversation-starters/:connectionId", requireAuth, async (req, res) => {
+    try {
+      const connectionId = parseInt(req.params.connectionId);
+      const userId = req.session.userId!;
+      const connection = await storage.getConnection(connectionId);
+      if (!connection) return res.status(404).json({ error: "Connection not found" });
+      if (connection.fromUserId !== userId && connection.toUserId !== userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      if (connection.status !== "approved") {
+        return res.status(400).json({ error: "Connection must be approved" });
+      }
+
+      const otherUserId = connection.fromUserId === userId ? connection.toUserId : connection.fromUserId;
+      const currentUser = await storage.getUser(userId);
+      const otherUser = await storage.getUser(otherUserId);
+      if (!currentUser || !otherUser) return res.status(404).json({ error: "User not found" });
+
+      const mentor = currentUser.role === "mentor" ? currentUser : otherUser;
+      const mentee = currentUser.role === "mentor" ? otherUser : currentUser;
+
+      const starters = await generateConversationStarters(mentor, mentee);
+      res.json({ starters });
+    } catch (error) {
+      console.error("AI conversation starters error:", error);
+      res.status(500).json({ error: "Failed to generate conversation starters" });
+    }
+  });
+
+  app.get("/api/ai/meeting-prep/:meetingId", requireAuth, async (req, res) => {
+    try {
+      const meetingId = parseInt(req.params.meetingId);
+      const userId = req.session.userId!;
+      const meeting = await storage.getMeeting(meetingId);
+      if (!meeting) return res.status(404).json({ error: "Meeting not found" });
+
+      const connection = await storage.getConnection(meeting.connectionId);
+      if (!connection) return res.status(404).json({ error: "Connection not found" });
+      if (connection.fromUserId !== userId && connection.toUserId !== userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const user1 = await storage.getUser(connection.fromUserId);
+      const user2 = await storage.getUser(connection.toUserId);
+      if (!user1 || !user2) return res.status(404).json({ error: "User not found" });
+
+      const mentor = user1.role === "mentor" ? user1 : user2;
+      const mentee = user1.role === "mentor" ? user2 : user1;
+
+      const messages = await storage.getMessagesByConnection(meeting.connectionId);
+      const messageHistory = messages.map(m => ({
+        sender: m.senderId === mentor.id ? (mentor.firstName || "Mentor") : (mentee.firstName || "Mentee"),
+        content: m.content,
+      }));
+
+      const prep = await generateMeetingPrep(mentor, mentee, meeting.title, meeting.format, messageHistory);
+      res.json(prep);
+    } catch (error) {
+      console.error("AI meeting prep error:", error);
+      res.status(500).json({ error: "Failed to generate meeting prep" });
+    }
+  });
+
+  app.get("/api/ai/career-insights", requireAuth, async (req, res) => {
+    try {
+      const allMentors = await storage.getAllMentors();
+      const mentorContexts = allMentors.map(m => ({
+        firstName: m.firstName,
+        lastName: m.lastName,
+        company: m.company,
+        jobTitle: m.jobTitle,
+        industry: m.industry,
+        expertise: m.expertise,
+        bio: m.bio,
+        role: m.role,
+      }));
+
+      if (mentorContexts.length === 0) {
+        return res.json({ insights: [] });
+      }
+
+      const insights = await generateCareerInsights(mentorContexts);
+      res.json({ insights });
+    } catch (error) {
+      console.error("AI career insights error:", error);
+      res.status(500).json({ error: "Failed to generate career insights" });
+    }
+  });
+
+  app.post("/api/ai/refine-goals", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      const { goalStatement, selectedGoals, goals } = req.body;
+      if (!goalStatement || typeof goalStatement !== "string") {
+        return res.status(400).json({ error: "Goal statement is required" });
+      }
+
+      const refined = await refineGoalStatement(
+        goalStatement,
+        selectedGoals || goals || user.menteeGoals || [],
+        user
+      );
+      res.json(refined);
+    } catch (error) {
+      console.error("AI goal refinement error:", error);
+      res.status(500).json({ error: "Failed to refine goals" });
+    }
+  });
+
+  app.post("/api/ai/match-score", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { mentorId } = req.body;
+      if (!mentorId) return res.status(400).json({ error: "mentorId is required" });
+
+      const currentUser = await storage.getUser(userId);
+      const mentorUser = await storage.getUser(mentorId);
+      if (!currentUser || !mentorUser) return res.status(404).json({ error: "User not found" });
+
+      const mentor = mentorUser.role === "mentor" ? mentorUser : currentUser;
+      const mentee = mentorUser.role === "mentor" ? currentUser : mentorUser;
+
+      const result = await scoreMatch(mentor, mentee);
+      res.json(result);
+    } catch (error) {
+      console.error("AI match score error:", error);
+      res.status(500).json({ error: "Failed to score match" });
+    }
+  });
 
   // ── Enterprise lead endpoint ──────────────────────────────────────
   const enterpriseRateLimit = new Map<string, number[]>();

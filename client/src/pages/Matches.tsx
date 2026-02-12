@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Sparkles, Users, Bell, MapPin, Calendar, Unlock, Search, X } from "lucide-react";
+import { Sparkles, Users, Bell, MapPin, Calendar, Unlock, Search, X, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getUnlockedMatches, getSuggestedMentors, getPendingConnections, requestConnection, approveConnection, declineConnection } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
@@ -23,6 +23,12 @@ import type { UnlockedMatchData, UserProfileWithBadges, Connection } from "@shar
 import { INDUSTRY_OPTIONS } from "@shared/schema";
 import { format } from "date-fns";
 import { UserBadge } from "@/components/UserBadge";
+
+interface MatchScoreResult {
+  score: number;
+  rationale: string;
+  strengths: string[];
+}
 
 export default function Matches() {
   const { user, isLoading: authLoading } = useAuth();
@@ -64,6 +70,28 @@ export default function Matches() {
   
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<ProfileDialogData | null>(null);
+  const [matchScores, setMatchScores] = useState<Record<string, MatchScoreResult>>({});
+  const [scoringMentorId, setScoringMentorId] = useState<string | null>(null);
+
+  const handleGetMatchScore = async (mentorId: string) => {
+    if (matchScores[mentorId]) return;
+    setScoringMentorId(mentorId);
+    try {
+      const res = await fetch("/api/ai/match-score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ mentorId }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setMatchScores(prev => ({ ...prev, [mentorId]: data }));
+    } catch {
+      toast({ title: "Could not generate match score", variant: "destructive" });
+    } finally {
+      setScoringMentorId(null);
+    }
+  };
 
   const { data: requests = [], isLoading: requestsLoading } = useQuery<any[]>({
     queryKey: ["/api/connections/pending"],
@@ -258,9 +286,33 @@ export default function Matches() {
                                   <span>{match.event.location}</span>
                                 </div>
                               </div>
-                              <div className="mt-2 text-sm">
+                              <div className="mt-2 flex items-center gap-2 flex-wrap">
                                 <Badge variant="secondary">{match.overlapScore} shared interests</Badge>
+                                {matchScores[person.id] ? (
+                                  <Badge variant="default" data-testid={`badge-match-score-${person.id}`}>
+                                    {matchScores[person.id].score}% AI Match
+                                  </Badge>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="gap-1 text-xs"
+                                    onClick={() => handleGetMatchScore(person.id)}
+                                    disabled={scoringMentorId === person.id}
+                                    data-testid={`button-match-score-${person.id}`}
+                                  >
+                                    {scoringMentorId === person.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Sparkles className="h-3 w-3" />
+                                    )}
+                                    AI Score
+                                  </Button>
+                                )}
                               </div>
+                              {matchScores[person.id] && (
+                                <p className="mt-1 text-xs text-muted-foreground">{matchScores[person.id].rationale}</p>
+                              )}
                             </div>
                           </div>
                           

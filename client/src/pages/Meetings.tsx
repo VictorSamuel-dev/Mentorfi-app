@@ -25,13 +25,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLocation } from "wouter";
-import { Calendar, Clock, Video, Phone, MapPin, Plus, CheckCircle, XCircle } from "lucide-react";
+import { Calendar, Clock, Video, Phone, MapPin, Plus, CheckCircle, XCircle, Sparkles, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { getMeetings, createMeeting, updateMeetingStatus } from "@/lib/api";
 import { format } from "date-fns";
 import type { MeetingWithParticipant, Connection } from "@shared/schema";
+
+interface MeetingPrepData {
+  menteeOverview: string;
+  conversationHighlights: string[];
+  suggestedTopics: string[];
+  questionsToAsk: string[];
+}
 
 async function getApprovedConnectionsEnriched(): Promise<{ connection: Connection; otherUser: { id: string; firstName: string | null; lastName: string | null; profileImageUrl: string | null; company: string | null } }[]> {
   const res = await fetch("/api/connections/approved/enriched", { credentials: "include" });
@@ -59,6 +67,27 @@ export default function Meetings() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [showSchedule, setShowSchedule] = useState(false);
+  const [prepMeetingId, setPrepMeetingId] = useState<number | null>(null);
+  const [prepData, setPrepData] = useState<MeetingPrepData | null>(null);
+  const [prepLoading, setPrepLoading] = useState(false);
+
+  const handleGetPrep = async (meetingId: number) => {
+    setPrepMeetingId(meetingId);
+    setPrepData(null);
+    setPrepLoading(true);
+    try {
+      const res = await fetch(`/api/ai/meeting-prep/${meetingId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to generate prep");
+      const data = await res.json();
+      setPrepData(data);
+    } catch {
+      toast({ title: "Could not generate meeting prep", description: "AI features may be temporarily unavailable.", variant: "destructive" });
+      setPrepMeetingId(null);
+    } finally {
+      setPrepLoading(false);
+    }
+  };
+
   const [formData, setFormData] = useState({
     connectionId: "",
     title: "",
@@ -196,7 +225,17 @@ export default function Meetings() {
                                   <p className="text-sm mt-2 text-muted-foreground">{meeting.notes}</p>
                                 )}
                               </div>
-                              <div className="flex gap-2 shrink-0">
+                              <div className="flex gap-2 shrink-0 flex-wrap">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1"
+                                  onClick={() => handleGetPrep(meeting.id)}
+                                  data-testid={`button-prep-meeting-${meeting.id}`}
+                                >
+                                  <Sparkles className="h-3.5 w-3.5" />
+                                  AI Prep
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -263,6 +302,68 @@ export default function Meetings() {
       </main>
 
       <Footer />
+
+      <Dialog open={prepMeetingId !== null} onOpenChange={(open) => { if (!open) { setPrepMeetingId(null); setPrepData(null); } }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI Meeting Prep Brief
+            </DialogTitle>
+          </DialogHeader>
+          {prepLoading ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Generating your meeting prep brief...</p>
+            </div>
+          ) : prepData ? (
+            <ScrollArea className="max-h-[60vh]">
+              <div className="space-y-4 pr-4">
+                <div>
+                  <h4 className="font-medium text-sm mb-1">Overview</h4>
+                  <p className="text-sm text-muted-foreground">{prepData.menteeOverview}</p>
+                </div>
+                {prepData.conversationHighlights.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Conversation Highlights</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      {prepData.conversationHighlights.map((h, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-primary mt-0.5">&#8226;</span>
+                          <span>{h}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {prepData.suggestedTopics.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Suggested Topics</h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {prepData.suggestedTopics.map((t, i) => (
+                        <Badge key={i} variant="secondary">{t}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {prepData.questionsToAsk.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Questions to Ask</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      {prepData.questionsToAsk.map((q, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-primary mt-0.5">&#8226;</span>
+                          <span>{q}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showSchedule} onOpenChange={setShowSchedule}>
         <DialogContent className="sm:max-w-md">

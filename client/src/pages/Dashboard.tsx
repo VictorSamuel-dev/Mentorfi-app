@@ -12,12 +12,18 @@ import { MatchNotification } from "@/components/MatchNotification";
 import { ProfileDialog, type ProfileDialogData } from "@/components/ProfileDialog";
 import { EventDetailsDialog } from "@/components/EventDetailsDialog";
 import { Link, useLocation } from "wouter";
-import { Calendar, Users, MessageSquare, ArrowRight, Sparkles, AlertCircle } from "lucide-react";
+import { Calendar, Users, MessageSquare, ArrowRight, Sparkles, AlertCircle, TrendingUp, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { getEvents, getUnlockedMatches, getConversations, cancelRsvp, rsvpToEvent } from "@/lib/api";
 import { getProfileCompleteness } from "@shared/schema";
 import type { EventWithAttendees, UnlockedMatchData, ConversationData, Event, Connection } from "@shared/schema";
+
+interface CareerInsight {
+  pattern: string;
+  description: string;
+  relevantMentorCount: number;
+}
 
 async function getApprovedConnections(): Promise<Connection[]> {
   const res = await fetch("/api/connections/approved", { credentials: "include" });
@@ -58,6 +64,25 @@ export default function Dashboard() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const { toast } = useToast();
+
+  const [careerInsights, setCareerInsights] = useState<CareerInsight[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsLoaded, setInsightsLoaded] = useState(false);
+
+  const handleGetInsights = async () => {
+    setInsightsLoading(true);
+    try {
+      const res = await fetch("/api/ai/career-insights", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setCareerInsights(data.insights || []);
+      setInsightsLoaded(true);
+    } catch {
+      toast({ title: "Could not load career insights", variant: "destructive" });
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
 
   const rsvpMutation = useMutation({
     mutationFn: async ({ eventId, isAttending }: { eventId: number; isAttending: boolean }) => {
@@ -369,6 +394,60 @@ export default function Dashboard() {
                   </Link>
                 </CardContent>
               </Card>
+
+              {user.role === "mentee" && (
+                <Card className="mt-4" data-testid="card-career-insights">
+                  <CardHeader className="flex flex-row items-center justify-between gap-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                      Career Insights
+                    </CardTitle>
+                    {!insightsLoaded && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        onClick={handleGetInsights}
+                        disabled={insightsLoading}
+                        data-testid="button-get-insights"
+                      >
+                        {insightsLoading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3.5 w-3.5" />
+                        )}
+                        {insightsLoading ? "Analyzing..." : "Get AI Insights"}
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    {!insightsLoaded && !insightsLoading ? (
+                      <p className="text-sm text-muted-foreground">
+                        Get personalized career insights based on your mentor network and interests.
+                      </p>
+                    ) : insightsLoading ? (
+                      <div className="flex items-center justify-center py-4 gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Analyzing your career data...</span>
+                      </div>
+                    ) : careerInsights.length > 0 ? (
+                      <div className="space-y-3">
+                        {careerInsights.map((insight, i) => (
+                          <div key={i} className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-medium">{insight.pattern}</h4>
+                              <Badge variant="secondary" className="text-xs">
+                                {insight.relevantMentorCount} mentors
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{insight.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         </div>
