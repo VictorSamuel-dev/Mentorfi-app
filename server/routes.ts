@@ -131,6 +131,48 @@ export async function registerRoutes(
     });
   });
 
+  app.post("/api/auth/change-email", requireAuth, async (req, res) => {
+    try {
+      const { newEmail, password } = req.body;
+
+      if (!newEmail || !password) {
+        return res.status(400).json({ message: "New email and password are required" });
+      }
+
+      const emailSchema = z.string().email();
+      const emailResult = emailSchema.safeParse(newEmail);
+      if (!emailResult.success) {
+        return res.status(400).json({ message: "Please enter a valid email address" });
+      }
+
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const isValid = await comparePasswords(password, user.password);
+      if (!isValid) {
+        return res.status(401).json({ message: "Incorrect password" });
+      }
+
+      if (newEmail.toLowerCase() === user.email?.toLowerCase()) {
+        return res.status(400).json({ message: "New email must be different from your current email" });
+      }
+
+      const existing = await storage.getUserByEmail(newEmail);
+      if (existing) {
+        return res.status(409).json({ message: "An account with this email already exists" });
+      }
+
+      await storage.updateUser(req.session.userId!, { email: newEmail });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Change email error:", error);
+      res.status(500).json({ message: "Failed to change email" });
+    }
+  });
+
   app.post("/api/auth/change-password", requireAuth, async (req, res) => {
     try {
       const { currentPassword, newPassword } = req.body;

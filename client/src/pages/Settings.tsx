@@ -12,9 +12,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Loader2, Lock, User, Shield } from "lucide-react";
+import { Loader2, Lock, User, Shield, Mail } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { queryClient } from "@/lib/queryClient";
+
+const emailSchema = z.object({
+  newEmail: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required to confirm this change"),
+});
+
+type EmailFormData = z.infer<typeof emailSchema>;
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -31,6 +39,45 @@ export default function Settings() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  const emailForm = useForm<EmailFormData>({
+    resolver: zodResolver(emailSchema),
+    defaultValues: {
+      newEmail: "",
+      password: "",
+    },
+  });
+
+  const emailMutation = useMutation({
+    mutationFn: async (data: EmailFormData) => {
+      const res = await fetch("/api/auth/change-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to change email");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      emailForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({
+        title: "Email updated",
+        description: "Your email address has been changed successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const passwordForm = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
@@ -140,6 +187,69 @@ export default function Settings() {
                     Edit Profile
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle>Change Email</CardTitle>
+                </div>
+                <CardDescription>Update your email address. You'll need to confirm with your password.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...emailForm}>
+                  <form onSubmit={emailForm.handleSubmit((data) => emailMutation.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={emailForm.control}
+                      name="newEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Email</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="email"
+                              placeholder="Enter new email address"
+                              data-testid="input-new-email"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={emailForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              placeholder="Enter your current password"
+                              data-testid="input-email-confirm-password"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>Required to verify your identity</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        type="submit"
+                        disabled={emailMutation.isPending}
+                        data-testid="button-change-email"
+                      >
+                        {emailMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Update Email
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               </CardContent>
             </Card>
 
