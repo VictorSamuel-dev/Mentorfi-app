@@ -192,7 +192,7 @@ export async function registerRoutes(
         menteeGoals, menteeGoalStatement,
         industry, yearsExperience, expertise, bio,
         maxConnectionsPerQuarter, preferredFormats, requiredMaterials,
-        onboardingComplete
+        onboardingComplete, role
       } = req.body;
       
       // Validate menteeGoals (max 3, must be from allowed options)
@@ -218,6 +218,8 @@ export async function registerRoutes(
         normalizedStatement = menteeGoalStatement.trim().slice(0, 200);
       }
       
+      const validRole = role === 'mentor' || role === 'mentee' ? role : undefined;
+
       const updated = await storage.updateUser(req.session.userId!, {
         firstName,
         lastName,
@@ -239,6 +241,7 @@ export async function registerRoutes(
         preferredFormats,
         requiredMaterials,
         onboardingComplete,
+        ...(validRole ? { role: validRole } : {}),
       });
 
       if (!updated) {
