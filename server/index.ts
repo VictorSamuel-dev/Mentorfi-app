@@ -48,6 +48,26 @@ async function awardBadgesToEarlyMentors() {
           newBadges
         ).catch(() => {});
       }
+
+      if (newBadges.length === 0 && hasFounding && hasVerified && mentor.email) {
+        const notifiedCheck = await pool.query(
+          `SELECT metadata FROM user_badges WHERE user_id = $1 AND badge_id = $2`,
+          [mentor.id, foundingBadge.id]
+        );
+        const alreadyNotified = notifiedCheck.rows[0]?.metadata?.emailSent;
+        if (!alreadyNotified) {
+          emailService.sendBadgeAwardedEmail(
+            mentor.email,
+            mentor.first_name || "Mentor",
+            ["FOUNDING_MENTOR", "VERIFIED_MENTOR"]
+          ).catch(() => {});
+          await pool.query(
+            `UPDATE user_badges SET metadata = '{"emailSent": true}'::jsonb WHERE user_id = $1 AND badge_id = $2`,
+            [mentor.id, foundingBadge.id]
+          );
+          console.log(`[Badges Migration] Sent badge notification email to ${mentor.first_name} ${mentor.last_name}`);
+        }
+      }
     }
     await pool.end();
     console.log("[Badges Migration] Early mentor badge check complete");
