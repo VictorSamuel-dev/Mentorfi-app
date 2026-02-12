@@ -1637,6 +1637,19 @@ export async function registerRoutes(
     }
   });
 
+  // One-time admin: set Victor's role to mentor on production
+  app.post("/api/admin/set-mentor-role", async (req, res) => {
+    const { email, secret } = req.body;
+    if (secret !== "mentorfy-admin-2026") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    const { db } = await import("./db");
+    const { users } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const result = await db.update(users).set({ role: "mentor" }).where(eq(users.email, email)).returning({ id: users.id, email: users.email, role: users.role });
+    res.json({ updated: result });
+  });
+
   // Seed badges on server start
   const { seedBadges } = await import("./seed/seedBadges");
   await seedBadges();
