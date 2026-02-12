@@ -198,6 +198,23 @@ export const emailService = {
     return sendEmail(recipientEmail, subject, html);
   },
 
+  async sendWorkEmailVerificationCode(to: string, firstName: string, code: string): Promise<boolean> {
+    const subject = `Your ${APP_NAME} work email verification code`;
+    const html = wrapInTemplate(`
+      <h2 style="color: #111827; margin: 0 0 16px;">Verify Your Work Email</h2>
+      <p style="color: #4b5563; line-height: 1.6; margin: 0 0 16px;">
+        Hi ${firstName}, please use the verification code below to confirm your work email on ${APP_NAME}.
+      </p>
+      <div style="text-align: center; margin: 24px 0; padding: 20px; background: #f9fafb; border-radius: 8px;">
+        <span style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #111827;">${code}</span>
+      </div>
+      <p style="color: #4b5563; line-height: 1.6; margin: 0 0 16px;">
+        This code expires in 15 minutes. If you didn't request this, you can safely ignore this email.
+      </p>
+    `);
+    return sendEmail(to, subject, html);
+  },
+
   async sendBadgeAwardedEmail(to: string, firstName: string, badgeNames: string[]): Promise<boolean> {
     const badgeList = badgeNames.map(name => {
       const colors: Record<string, { bg: string; text: string; label: string }> = {

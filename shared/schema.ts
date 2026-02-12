@@ -36,6 +36,11 @@ export const users = pgTable("users", {
   preferredFormats: jsonb("preferred_formats").default([]),
   requiredMaterials: jsonb("required_materials").default({}),
   onboardingComplete: boolean("onboarding_complete").default(false),
+  // Work email verification
+  workEmail: text("work_email"),
+  workEmailVerified: boolean("work_email_verified").default(false),
+  workEmailVerificationCode: text("work_email_verification_code"),
+  workEmailVerificationExpires: timestamp("work_email_verification_expires"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -62,6 +67,10 @@ export const insertUserSchema = createInsertSchema(users).pick({
   preferredFormats: true,
   requiredMaterials: true,
   onboardingComplete: true,
+  workEmail: true,
+  workEmailVerified: true,
+  workEmailVerificationCode: true,
+  workEmailVerificationExpires: true,
 });
 
 // Available mentee goal options for matching

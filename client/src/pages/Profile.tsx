@@ -13,12 +13,12 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { updateProfile } from "@/lib/api";
 import { BadgeRow } from "@/components/UserBadge";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Crown, Camera, Loader2, Check } from "lucide-react";
+import { Crown, Camera, Loader2, Check, ShieldCheck, Mail, ArrowRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { UserProfileWithBadges } from "@shared/schema";
@@ -46,6 +46,9 @@ export default function Profile() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [workEmailInput, setWorkEmailInput] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
 
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery<UserProfileWithBadges>({
     queryKey: ["/api/users/profile"],
@@ -190,6 +193,38 @@ export default function Profile() {
     updateMutation.mutate(data);
   };
 
+  const sendCodeMutation = useMutation({
+    mutationFn: async (workEmail: string) => {
+      const res = await apiRequest("POST", "/api/work-email/send-code", { workEmail });
+      return res.json();
+    },
+    onSuccess: () => {
+      setCodeSent(true);
+      toast({ title: "Code sent", description: "Check your work email for the verification code." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message || "Failed to send code", variant: "destructive" });
+    },
+  });
+
+  const verifyCodeMutation = useMutation({
+    mutationFn: async (code: string) => {
+      const res = await apiRequest("POST", "/api/work-email/verify", { code });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: "Verified!", description: data.message || "Work email verified successfully." });
+      setCodeSent(false);
+      setVerificationCode("");
+      setWorkEmailInput("");
+      queryClient.invalidateQueries({ queryKey: ["/api/users/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Verification failed", description: err.message || "Invalid code", variant: "destructive" });
+    },
+  });
+
   useEffect(() => {
     if (!authLoading && !user) {
       setLocation("/login");
@@ -279,6 +314,97 @@ export default function Profile() {
                   </div>
                 </CardContent>
               </Card>
+
+              {profile?.role === "mentor" && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShieldCheck className="h-5 w-5" />
+                      Work Email Verification
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {profile?.workEmailVerified ? (
+                      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                        <Check className="h-5 w-5" />
+                        <span className="font-medium">Verified: {profile?.workEmail}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          Verify your company or organization email to earn the Verified Mentor badge. Personal email addresses (Gmail, Yahoo, etc.) are not accepted.
+                        </p>
+                        {!codeSent ? (
+                          <div className="flex gap-2">
+                            <Input
+                              type="email"
+                              placeholder="you@yourcompany.com"
+                              value={workEmailInput}
+                              onChange={(e) => setWorkEmailInput(e.target.value)}
+                              data-testid="input-work-email"
+                            />
+                            <Button
+                              onClick={() => sendCodeMutation.mutate(workEmailInput)}
+                              disabled={!workEmailInput || sendCodeMutation.isPending}
+                              data-testid="button-send-verification"
+                            >
+                              {sendCodeMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Send Code
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <p className="text-sm text-muted-foreground">
+                              A 6-digit code was sent to <strong>{workEmailInput}</strong>. Enter it below.
+                            </p>
+                            <div className="flex gap-2">
+                              <Input
+                                type="text"
+                                placeholder="Enter 6-digit code"
+                                value={verificationCode}
+                                onChange={(e) => setVerificationCode(e.target.value)}
+                                maxLength={6}
+                                data-testid="input-verification-code"
+                              />
+                              <Button
+                                onClick={() => verifyCodeMutation.mutate(verificationCode)}
+                                disabled={verificationCode.length !== 6 || verifyCodeMutation.isPending}
+                                data-testid="button-verify-code"
+                              >
+                                {verifyCodeMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <ArrowRight className="h-4 w-4 mr-2" />
+                                    Verify
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setCodeSent(false);
+                                setVerificationCode("");
+                              }}
+                              data-testid="button-change-work-email"
+                            >
+                              Use a different email
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               <Card>
                 <CardHeader>

@@ -1136,6 +1136,115 @@ export async function registerRoutes(
   });
 
   // =====================
+  // WORK EMAIL VERIFICATION
+  // =====================
+
+  const PERSONAL_EMAIL_DOMAINS = [
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com",
+    "icloud.com", "mail.com", "protonmail.com", "zoho.com", "yandex.com",
+    "live.com", "msn.com", "me.com", "mac.com", "comcast.net",
+    "att.net", "verizon.net", "cox.net", "sbcglobal.net", "charter.net",
+    "earthlink.net", "optonline.net", "frontier.com", "windstream.net",
+    "gmx.com", "gmx.net", "fastmail.com", "tutanota.com", "hushmail.com",
+  ];
+
+  app.post("/api/work-email/send-code", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      if (user.role !== "mentor") return res.status(403).json({ error: "Only mentors can verify work email" });
+
+      const { workEmail } = req.body;
+      if (!workEmail || typeof workEmail !== "string") {
+        return res.status(400).json({ error: "Work email is required" });
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(workEmail)) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
+      const domain = workEmail.split("@")[1].toLowerCase();
+      if (PERSONAL_EMAIL_DOMAINS.includes(domain)) {
+        return res.status(400).json({ error: "Please use your company or organization email, not a personal email address" });
+      }
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expires = new Date(Date.now() + 15 * 60 * 1000);
+
+      await storage.updateUser(user.id, {
+        workEmail,
+        workEmailVerified: false,
+        workEmailVerificationCode: code,
+        workEmailVerificationExpires: expires,
+      });
+
+      emailService.sendWorkEmailVerificationCode(
+        workEmail,
+        user.firstName || "Mentor",
+        code
+      ).catch(() => {});
+
+      res.json({ success: true, message: "Verification code sent to your work email" });
+    } catch (error) {
+      console.error("Send work email code error:", error);
+      res.status(500).json({ error: "Failed to send verification code" });
+    }
+  });
+
+  app.post("/api/work-email/verify", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      if (user.role !== "mentor") return res.status(403).json({ error: "Only mentors can verify work email" });
+
+      const { code } = req.body;
+      if (!code || typeof code !== "string") {
+        return res.status(400).json({ error: "Verification code is required" });
+      }
+
+      if (!user.workEmailVerificationCode || !user.workEmailVerificationExpires) {
+        return res.status(400).json({ error: "No verification code has been sent. Please request a new one." });
+      }
+
+      if (new Date() > new Date(user.workEmailVerificationExpires)) {
+        return res.status(400).json({ error: "Verification code has expired. Please request a new one." });
+      }
+
+      if (user.workEmailVerificationCode !== code) {
+        return res.status(400).json({ error: "Invalid verification code" });
+      }
+
+      await storage.updateUser(user.id, {
+        workEmailVerified: true,
+        workEmailVerificationCode: null,
+        workEmailVerificationExpires: null,
+      });
+
+      const verifiedBadge = await storage.getBadgeByCode("VERIFIED_MENTOR");
+      if (verifiedBadge) {
+        const existingBadges = await storage.getUserBadges(user.id);
+        const hasVerified = existingBadges.some(b => b.code === "VERIFIED_MENTOR");
+        if (!hasVerified) {
+          await storage.awardBadge(user.id, verifiedBadge.id).catch(() => {});
+          if (user.email) {
+            emailService.sendBadgeAwardedEmail(
+              user.email,
+              user.firstName || "Mentor",
+              ["VERIFIED_MENTOR"]
+            ).catch(() => {});
+          }
+        }
+      }
+
+      res.json({ success: true, message: "Work email verified! You've earned the Verified Mentor badge." });
+    } catch (error) {
+      console.error("Verify work email error:", error);
+      res.status(500).json({ error: "Failed to verify work email" });
+    }
+  });
+
+  // =====================
   // NOTIFICATION ROUTES
   // =====================
 
