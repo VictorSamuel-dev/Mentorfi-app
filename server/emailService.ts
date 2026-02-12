@@ -54,6 +54,21 @@ async function sendEmail(to: string, subject: string, htmlContent: string): Prom
 }
 
 export const emailService = {
+  async sendEmailChangedConfirmation(to: string, firstName: string): Promise<boolean> {
+    const subject = `Your ${APP_NAME} email has been updated`;
+    const html = wrapInTemplate(`
+      <h2 style="color: #111827; margin: 0 0 16px;">Email Address Updated</h2>
+      <p style="color: #4b5563; line-height: 1.6; margin: 0 0 16px;">
+        Hi ${firstName}, your email address on ${APP_NAME} has been successfully changed to this address.
+      </p>
+      <p style="color: #4b5563; line-height: 1.6; margin: 0 0 16px;">
+        If you did not make this change, please contact us immediately or reset your password.
+      </p>
+      ${actionButton('Go to Settings', `${APP_URL}/settings`)}
+    `);
+    return sendEmail(to, subject, html);
+  },
+
   async sendWelcomeEmail(to: string, firstName: string, role: string): Promise<boolean> {
     const isMentor = role === 'mentor';
     const subject = `Welcome to ${APP_NAME}!`;

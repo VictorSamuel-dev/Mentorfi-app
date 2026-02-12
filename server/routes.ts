@@ -166,6 +166,8 @@ export async function registerRoutes(
 
       await storage.updateUser(req.session.userId!, { email: newEmail });
 
+      emailService.sendEmailChangedConfirmation(newEmail, user.firstName || "there").catch(() => {});
+
       res.json({ success: true });
     } catch (error) {
       console.error("Change email error:", error);
