@@ -52,7 +52,7 @@ export default function Matches() {
   const { data: suggestedMentors = [], isLoading: mentorsLoading } = useQuery<UserProfileWithBadges[]>({
     queryKey: ["/api/mentors/suggested", mentorFilters],
     queryFn: () => getSuggestedMentors(mentorFilters),
-    enabled: !!user && user.role === "mentee",
+    enabled: !!user,
   });
   
   const hasActiveFilters = !!debouncedSearch || !!industryFilter;
@@ -164,7 +164,9 @@ export default function Matches() {
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-1">Matches & Connections</h1>
             <p className="text-muted-foreground">
-              Connect with mentors who share your interests and events
+              {user.role === "mentor" 
+                ? "Discover peer mentors and manage your connection requests"
+                : "Connect with mentors who share your interests and events"}
             </p>
           </div>
 
@@ -181,7 +183,7 @@ export default function Matches() {
               </TabsTrigger>
               <TabsTrigger value="mentors" className="gap-2" data-testid="tab-mentors">
                 <Users className="h-4 w-4" />
-                Browse Mentors
+                {user.role === "mentor" ? "Peer Mentors" : "Browse Mentors"}
               </TabsTrigger>
               <TabsTrigger value="requests" className="gap-2" data-testid="tab-requests">
                 <Bell className="h-4 w-4" />
@@ -342,12 +344,14 @@ export default function Matches() {
                 <div className="text-center py-16 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium">
-                    {hasActiveFilters ? "No mentors match your filters" : "Mentors will appear once approved"}
+                    {hasActiveFilters ? "No mentors match your filters" : (user.role === "mentor" ? "No other mentors yet" : "Mentors will appear once approved")}
                   </p>
                   <p className="text-sm">
                     {hasActiveFilters 
                       ? "Try adjusting your search or clearing filters."
-                      : "Our mentor network is growing. Add interests to your profile so we can match you when mentors join."}
+                      : (user.role === "mentor" 
+                        ? "Other mentors will appear here as they join the platform. Connect with peers to share mentoring approaches." 
+                        : "Our mentor network is growing. Add interests to your profile so we can match you when mentors join.")}
                   </p>
                   {hasActiveFilters && (
                     <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters} data-testid="button-clear-filters-empty">

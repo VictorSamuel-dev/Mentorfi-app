@@ -878,14 +878,14 @@ export class DatabaseStorage implements IStorage {
 
   async getSuggestedMentors(userId: string, filters?: { company?: string; industry?: string; interest?: string; search?: string }): Promise<UserProfileWithBadges[]> {
     const user = await this.getUser(userId);
-    if (!user || user.role !== "mentee") return [];
+    if (!user) return [];
     
     const mentors = await db
       .select()
       .from(users)
       .where(eq(users.role, "mentor"));
     
-    let filtered = mentors;
+    let filtered = mentors.filter(m => m.id !== userId);
     
     if (filters?.company) {
       const q = filters.company.toLowerCase();

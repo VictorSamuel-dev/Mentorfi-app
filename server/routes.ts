@@ -1005,11 +1005,6 @@ export async function registerRoutes(
   // Get suggested mentors (interest-based, no shared event required, supports filtering)
   app.get("/api/mentors/suggested", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "mentee") {
-        return res.status(403).json({ error: "Only mentees can view suggested mentors" });
-      }
-      
       const filters = {
         company: req.query.company as string | undefined,
         industry: req.query.industry as string | undefined,
