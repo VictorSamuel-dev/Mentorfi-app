@@ -40,3 +40,8 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_replit_auth:2.0.0", "javascript_websocket:1.0.0", "javascript_object_storage:2.0.0", "stripe:2.0.0", "javascript_stripe:1.0.0", "sendgrid:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+ENTERPRISE_LEADS_TO_EMAIL = "partnerships@mentor-fy.app"

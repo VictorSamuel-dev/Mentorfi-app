@@ -104,10 +104,17 @@ Preferred communication style: Simple, everyday language.
 ### SendGrid Email Integration
 - **SendGrid Client**: `server/sendgridClient.ts` - fetches credentials from Replit SendGrid connector
 - **Email Service**: `server/emailService.ts` - branded HTML email templates for all notification types
-- **Email Types**: Welcome (signup), Connection Request, Connection Approved, New Message, Meeting Scheduled, Review Received
+- **Email Types**: Welcome (signup), Connection Request, Connection Approved, New Message, Meeting Scheduled, Review Received, Enterprise Lead Notification
 - **Integration**: Non-blocking email sending via `.catch(() => {})` in all route handlers
 - **From Address**: Configured through SendGrid connector (mentorfy.app@gmail.com)
+
+### Enterprise Lead Flow
+- **Endpoint**: POST `/api/enterprise/lead` - public, no auth required
+- **Spam Protection**: Honeypot hidden field, IP rate limiting (3/hr), Zod email validation
+- **Email Notification**: Sends lead details to `ENTERPRISE_LEADS_TO_EMAIL` env var (fallback: mentorfy.app@gmail.com)
+- **Frontend**: Enterprise card on `/pricing` page with "Get a Quote" modal form and success confirmation
 
 ### Environment Variables Required
 - `DATABASE_URL`: PostgreSQL connection string
 - `SESSION_SECRET`: Session encryption key (optional, has dev fallback)
+- `ENTERPRISE_LEADS_TO_EMAIL`: Recipient for enterprise lead notifications (default: mentorfy.app@gmail.com)

@@ -1399,6 +1399,63 @@ export async function registerRoutes(
   // Register object storage routes
   registerObjectStorageRoutes(app);
 
+  // ── Enterprise lead endpoint ──────────────────────────────────────
+  const enterpriseRateLimit = new Map<string, number[]>();
+
+  app.post("/api/enterprise/lead", async (req: Request, res: Response) => {
+    try {
+      const ip = req.ip || req.socket.remoteAddress || "unknown";
+
+      // Rate limit: max 3 submissions per IP per hour
+      const now = Date.now();
+      const windowMs = 60 * 60 * 1000;
+      const timestamps = (enterpriseRateLimit.get(ip) || []).filter(t => now - t < windowMs);
+      if (timestamps.length >= 3) {
+        return res.status(429).json({ error: "Too many requests. Please try again later." });
+      }
+
+      // Honeypot check
+      if (req.body.website) {
+        return res.status(200).json({ success: true });
+      }
+
+      const schema = z.object({
+        fullName: z.string().min(1, "Full name is required").max(200),
+        workEmail: z.string().email("Valid work email is required").max(320),
+        organization: z.string().min(1, "Organization is required").max(200),
+        roleTitle: z.string().max(200).optional().default(""),
+        estimatedUsers: z.enum(["<100", "100-500", "500-2000", "2000+"]),
+        notes: z.string().max(2000).optional().default(""),
+        website: z.string().optional(),
+      });
+
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid form data", details: parsed.error.flatten().fieldErrors });
+      }
+
+      const { fullName, workEmail, organization, roleTitle, estimatedUsers, notes } = parsed.data;
+
+      timestamps.push(now);
+      enterpriseRateLimit.set(ip, timestamps);
+
+      emailService.sendEnterpriseleadNotification({
+        fullName,
+        workEmail,
+        organization,
+        roleTitle: roleTitle || undefined,
+        estimatedUsers,
+        notes: notes || undefined,
+      }).catch(() => {});
+
+      console.log(`[Enterprise Lead] ${fullName} from ${organization} (${workEmail})`);
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("[Enterprise Lead] Error:", err.message);
+      return res.status(500).json({ error: "Something went wrong. Please try again." });
+    }
+  });
+
   // Seed badges on server start
   const { seedBadges } = await import("./seed/seedBadges");
   await seedBadges();

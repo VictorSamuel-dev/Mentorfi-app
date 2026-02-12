@@ -157,6 +157,36 @@ export const emailService = {
     return sendEmail(to, subject, html);
   },
 
+  async sendEnterpriseleadNotification(lead: {
+    fullName: string;
+    workEmail: string;
+    organization: string;
+    roleTitle?: string;
+    estimatedUsers: string;
+    notes?: string;
+  }): Promise<boolean> {
+    const recipientEmail = process.env.ENTERPRISE_LEADS_TO_EMAIL || 'mentorfy.app@gmail.com';
+    const subject = `New Enterprise Lead: ${lead.organization}`;
+    const html = wrapInTemplate(`
+      <h2 style="color: #111827; margin: 0 0 16px;">New Enterprise Inquiry</h2>
+      <p style="color: #4b5563; line-height: 1.6; margin: 0 0 16px;">
+        A new enterprise lead has submitted a quote request.
+      </p>
+      <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 0 0 16px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr><td style="padding: 6px 8px; color: #6b7280; font-size: 14px; white-space: nowrap; vertical-align: top;">Name</td><td style="padding: 6px 8px; color: #111827; font-weight: 600; font-size: 14px;">${lead.fullName}</td></tr>
+          <tr><td style="padding: 6px 8px; color: #6b7280; font-size: 14px; white-space: nowrap; vertical-align: top;">Email</td><td style="padding: 6px 8px; color: #111827; font-weight: 600; font-size: 14px;"><a href="mailto:${lead.workEmail}" style="color: #6366f1;">${lead.workEmail}</a></td></tr>
+          <tr><td style="padding: 6px 8px; color: #6b7280; font-size: 14px; white-space: nowrap; vertical-align: top;">Organization</td><td style="padding: 6px 8px; color: #111827; font-weight: 600; font-size: 14px;">${lead.organization}</td></tr>
+          ${lead.roleTitle ? `<tr><td style="padding: 6px 8px; color: #6b7280; font-size: 14px; white-space: nowrap; vertical-align: top;">Role/Title</td><td style="padding: 6px 8px; color: #111827; font-weight: 600; font-size: 14px;">${lead.roleTitle}</td></tr>` : ''}
+          <tr><td style="padding: 6px 8px; color: #6b7280; font-size: 14px; white-space: nowrap; vertical-align: top;">Est. Users</td><td style="padding: 6px 8px; color: #111827; font-weight: 600; font-size: 14px;">${lead.estimatedUsers}</td></tr>
+          ${lead.notes ? `<tr><td style="padding: 6px 8px; color: #6b7280; font-size: 14px; white-space: nowrap; vertical-align: top;">Notes</td><td style="padding: 6px 8px; color: #111827; font-size: 14px;">${lead.notes}</td></tr>` : ''}
+        </table>
+      </div>
+      ${actionButton('Reply to Lead', `mailto:${lead.workEmail}?subject=Re: Mentorfy Enterprise Inquiry`)}
+    `);
+    return sendEmail(recipientEmail, subject, html);
+  },
+
   async sendReviewReceivedEmail(to: string, mentorName: string, reviewerName: string, rating: number): Promise<boolean> {
     const subject = `${reviewerName} left you a review`;
     const html = wrapInTemplate(`
