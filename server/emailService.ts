@@ -2,11 +2,7 @@
 import { getUncachableSendGridClient } from './sendgridClient';
 
 const APP_NAME = 'Mentorfy';
-const APP_URL = process.env.REPLIT_DEV_DOMAIN
-  ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-  : process.env.REPL_SLUG
-  ? 'https://mentor-fy.app'
-  : 'http://localhost:5000';
+const APP_URL = 'https://mentor-fy.app';
 
 function wrapInTemplate(content: string): string {
   return `
