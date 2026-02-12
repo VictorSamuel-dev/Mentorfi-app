@@ -80,6 +80,27 @@ export async function registerRoutes(
       req.session.userId = user.id;
       const { password: _, ...profile } = user;
 
+      // Auto-award Founding Mentor + Verified Mentor badges to first 10 mentors
+      if (user.role === "mentor") {
+        try {
+          const stats = await storage.getPlatformStats();
+          const mentorCount = stats.mentorCount;
+          if (mentorCount <= 10) {
+            const foundingBadge = await storage.getBadgeByCode("FOUNDING_MENTOR");
+            const verifiedBadge = await storage.getBadgeByCode("VERIFIED_MENTOR");
+            if (foundingBadge) {
+              await storage.awardBadge(user.id, foundingBadge.id).catch(() => {});
+            }
+            if (verifiedBadge) {
+              await storage.awardBadge(user.id, verifiedBadge.id).catch(() => {});
+            }
+            console.log(`[Badges] Auto-awarded Founding + Verified Mentor badges to mentor #${mentorCount}: ${user.email}`);
+          }
+        } catch (err) {
+          console.error("[Badges] Failed to auto-award badges:", err);
+        }
+      }
+
       if (user.email) {
         emailService.sendWelcomeEmail(
           user.email,
