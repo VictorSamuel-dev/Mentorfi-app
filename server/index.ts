@@ -8,9 +8,42 @@ import pg from "pg";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
+import { storage } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
+
+async function awardBadgesToEarlyMentors() {
+  try {
+    const foundingBadge = await storage.getBadgeByCode("FOUNDING_MENTOR");
+    const verifiedBadge = await storage.getBadgeByCode("VERIFIED_MENTOR");
+    if (!foundingBadge || !verifiedBadge) return;
+
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    const result = await pool.query(
+      `SELECT id, first_name, last_name FROM users WHERE role = 'mentor' ORDER BY created_at ASC LIMIT 10`
+    );
+    
+    for (const mentor of result.rows) {
+      const existingBadges = await storage.getUserBadges(mentor.id);
+      const hasFounding = existingBadges.some((b: any) => b.code === "FOUNDING_MENTOR");
+      const hasVerified = existingBadges.some((b: any) => b.code === "VERIFIED_MENTOR");
+
+      if (!hasFounding) {
+        await storage.awardBadge(mentor.id, foundingBadge.id).catch(() => {});
+        console.log(`[Badges Migration] Awarded FOUNDING_MENTOR to ${mentor.first_name} ${mentor.last_name}`);
+      }
+      if (!hasVerified) {
+        await storage.awardBadge(mentor.id, verifiedBadge.id).catch(() => {});
+        console.log(`[Badges Migration] Awarded VERIFIED_MENTOR to ${mentor.first_name} ${mentor.last_name}`);
+      }
+    }
+    await pool.end();
+    console.log("[Badges Migration] Early mentor badge check complete");
+  } catch (err) {
+    console.error("[Badges Migration] Error:", err);
+  }
+}
 
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -42,7 +75,10 @@ async function initStripe() {
   }
 }
 
-(async () => { await initStripe(); })();
+(async () => { 
+  await initStripe();
+  await awardBadgesToEarlyMentors();
+})();
 
 app.post(
   '/api/stripe/webhook',
