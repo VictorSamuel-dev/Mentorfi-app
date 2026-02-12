@@ -31,6 +31,9 @@ const profileSchema = z.object({
   jobTitle: z.string().optional(),
   interests: z.string().optional(),
   targetCompanies: z.string().optional(),
+  school: z.string().optional(),
+  program: z.string().optional(),
+  gradYear: z.string().optional(),
   menteeGoals: z.array(z.string()).max(3, "Select up to 3 goals").optional(),
   menteeGoalStatement: z.string().max(200, "Maximum 200 characters").optional(),
 });
@@ -68,6 +71,9 @@ export default function Profile() {
       jobTitle: profile.jobTitle || "",
       interests: profile.interests?.join(", ") || "",
       targetCompanies: profile.targetCompanies?.join(", ") || "",
+      school: profile.school || "",
+      program: profile.program || "",
+      gradYear: profile.gradYear?.toString() || "",
       menteeGoals: profile.menteeGoals || [],
       menteeGoalStatement: profile.menteeGoalStatement || "",
     } : undefined,
@@ -81,6 +87,9 @@ export default function Profile() {
       jobTitle: data.jobTitle,
       interests: data.interests?.split(",").map(s => s.trim()).filter(Boolean),
       targetCompanies: data.targetCompanies?.split(",").map(s => s.trim()).filter(Boolean),
+      school: data.school,
+      program: data.program,
+      gradYear: data.gradYear ? parseInt(data.gradYear) : null,
       menteeGoals: data.menteeGoals,
       menteeGoalStatement: data.menteeGoalStatement,
     }),
@@ -370,6 +379,69 @@ export default function Profile() {
                           </FormItem>
                         )}
                       />
+
+                      {/* Education Section - only show for mentees */}
+                      {profile?.role === "mentee" && (
+                        <div className="space-y-4 pt-4 border-t">
+                          <h3 className="font-semibold text-lg">Education</h3>
+                          
+                          <FormField
+                            control={form.control}
+                            name="school"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>School / University</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    placeholder="e.g., New York University"
+                                    data-testid="input-school"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="program"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Program / Major</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      {...field} 
+                                      placeholder="e.g., Computer Science"
+                                      data-testid="input-program"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="gradYear"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Graduation Year</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      {...field} 
+                                      placeholder="e.g., 2027"
+                                      data-testid="input-grad-year"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       {/* Mentee Goals Section - only show for mentees */}
                       {profile?.role === "mentee" && (
