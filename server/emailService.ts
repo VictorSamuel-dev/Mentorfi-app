@@ -198,6 +198,34 @@ export const emailService = {
     return sendEmail(recipientEmail, subject, html);
   },
 
+  async sendBadgeAwardedEmail(to: string, firstName: string, badgeNames: string[]): Promise<boolean> {
+    const badgeList = badgeNames.map(name => {
+      const colors: Record<string, { bg: string; text: string; label: string }> = {
+        'FOUNDING_MENTOR': { bg: '#fef3c7', text: '#92400e', label: 'Founding Mentor' },
+        'VERIFIED_MENTOR': { bg: '#dbeafe', text: '#1e40af', label: 'Verified Mentor' },
+        'EARLY_SUPPORTER': { bg: '#f1f5f9', text: '#334155', label: 'Early Supporter' },
+      };
+      const style = colors[name] || { bg: '#f3f4f6', text: '#374151', label: name };
+      return `<span style="display: inline-block; background: ${style.bg}; color: ${style.text}; padding: 4px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; margin: 4px;">${style.label}</span>`;
+    }).join(' ');
+
+    const subject = `You've earned ${badgeNames.length > 1 ? 'new badges' : 'a new badge'} on ${APP_NAME}!`;
+    const html = wrapInTemplate(`
+      <h2 style="color: #111827; margin: 0 0 16px;">Congratulations, ${firstName}!</h2>
+      <p style="color: #4b5563; line-height: 1.6; margin: 0 0 16px;">
+        You've been awarded ${badgeNames.length > 1 ? 'special badges' : 'a special badge'} on ${APP_NAME} in recognition of your early support and commitment to mentorship.
+      </p>
+      <div style="text-align: center; margin: 24px 0; padding: 20px; background: #f9fafb; border-radius: 8px;">
+        ${badgeList}
+      </div>
+      <p style="color: #4b5563; line-height: 1.6; margin: 0 0 16px;">
+        These badges are now visible on your profile, helping students recognize you as a trusted and valued mentor on the platform.
+      </p>
+      ${actionButton('View Your Profile', `${APP_URL}/profile`)}
+    `);
+    return sendEmail(to, subject, html);
+  },
+
   async sendReviewReceivedEmail(to: string, mentorName: string, reviewerName: string, rating: number): Promise<boolean> {
     const subject = `${reviewerName} left you a review`;
     const html = wrapInTemplate(`

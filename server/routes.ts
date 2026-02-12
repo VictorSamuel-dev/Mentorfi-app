@@ -80,7 +80,6 @@ export async function registerRoutes(
       req.session.userId = user.id;
       const { password: _, ...profile } = user;
 
-      // Auto-award Founding Mentor + Verified Mentor badges to first 10 mentors
       if (user.role === "mentor") {
         try {
           const stats = await storage.getPlatformStats();
@@ -88,13 +87,23 @@ export async function registerRoutes(
           if (mentorCount <= 10) {
             const foundingBadge = await storage.getBadgeByCode("FOUNDING_MENTOR");
             const verifiedBadge = await storage.getBadgeByCode("VERIFIED_MENTOR");
+            const awardedBadges: string[] = [];
             if (foundingBadge) {
               await storage.awardBadge(user.id, foundingBadge.id).catch(() => {});
+              awardedBadges.push("FOUNDING_MENTOR");
             }
             if (verifiedBadge) {
               await storage.awardBadge(user.id, verifiedBadge.id).catch(() => {});
+              awardedBadges.push("VERIFIED_MENTOR");
             }
             console.log(`[Badges] Auto-awarded Founding + Verified Mentor badges to mentor #${mentorCount}: ${user.email}`);
+            if (awardedBadges.length > 0 && user.email) {
+              emailService.sendBadgeAwardedEmail(
+                user.email,
+                user.firstName || "Mentor",
+                awardedBadges
+              ).catch(() => {});
+            }
           }
         } catch (err) {
           console.error("[Badges] Failed to auto-award badges:", err);
