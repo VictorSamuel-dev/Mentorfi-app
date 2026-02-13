@@ -293,9 +293,9 @@ export default function Profile() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header isAuthenticated={true} user={user} role={user.role} />
       
-      <main className="flex-1 py-8 px-6">
+      <main className="flex-1 py-4 px-4 md:py-8 md:px-6">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">Your Profile</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-6">Your Profile</h1>
 
           {profileLoading ? (
             <Card>
@@ -460,7 +460,7 @@ export default function Profile() {
                 <CardContent>
                   <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
                           name="firstName"

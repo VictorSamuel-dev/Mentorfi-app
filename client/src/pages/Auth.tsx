@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,6 +118,11 @@ export default function Auth() {
                   >
                     {loginPending ? "Logging in..." : "Login"}
                   </Button>
+                  <div className="text-center mt-2">
+                    <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground" data-testid="link-forgot-password">
+                      Forgot Password?
+                    </Link>
+                  </div>
                 </form>
               </TabsContent>
 

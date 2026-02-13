@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Header } from "@/components/Header";
@@ -12,9 +12,11 @@ import { MatchNotification } from "@/components/MatchNotification";
 import { ProfileDialog, type ProfileDialogData } from "@/components/ProfileDialog";
 import { EventDetailsDialog } from "@/components/EventDetailsDialog";
 import { Link, useLocation } from "wouter";
-import { Calendar, Users, MessageSquare, ArrowRight, Sparkles, AlertCircle, TrendingUp, Loader2 } from "lucide-react";
+import { Calendar, Users, MessageSquare, ArrowRight, Sparkles, AlertCircle, TrendingUp, Loader2, AlertTriangle, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { OnboardingTour } from "@/components/OnboardingTour";
+import { apiRequest } from "@/lib/queryClient";
 import { getEvents, getUnlockedMatches, getConversations, cancelRsvp, rsvpToEvent } from "@/lib/api";
 import { getProfileCompleteness } from "@shared/schema";
 import type { EventWithAttendees, UnlockedMatchData, ConversationData, Event, Connection } from "@shared/schema";
@@ -68,6 +70,20 @@ export default function Dashboard() {
   const [careerInsights, setCareerInsights] = useState<CareerInsight[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsLoaded, setInsightsLoaded] = useState(false);
+  const [verificationDismissed, setVerificationDismissed] = useState(false);
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    if (user && !localStorage.getItem("mentorfy_tour_completed")) {
+      setShowTour(true);
+    }
+  }, [user]);
+
+  const handleTourComplete = () => {
+    localStorage.setItem("mentorfy_tour_completed", "true");
+    setShowTour(false);
+  };
 
   const handleGetInsights = async () => {
     setInsightsLoading(true);
@@ -203,10 +219,54 @@ export default function Dashboard() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header isAuthenticated={true} user={user} notificationCount={matches.length} role={user.role} />
       
-      <main className="flex-1 py-8 px-6">
+      <main className="flex-1 py-4 px-4 md:py-8 md:px-6">
         <div className="max-w-7xl mx-auto">
+          {user && !user.emailVerified && !verificationDismissed && (
+            <div
+              className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md p-3 mb-6 flex items-center justify-between gap-3 flex-wrap"
+              data-testid="banner-email-verification"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  Please verify your email address to unlock all features.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={resendingVerification}
+                  onClick={async () => {
+                    setResendingVerification(true);
+                    try {
+                      await apiRequest("POST", "/api/auth/send-verification");
+                      toast({ title: "Verification email sent! Check your inbox." });
+                    } catch {
+                      toast({ title: "Failed to send verification email", variant: "destructive" });
+                    } finally {
+                      setResendingVerification(false);
+                    }
+                  }}
+                  data-testid="button-resend-verification"
+                >
+                  {resendingVerification ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+                  Resend Verification Email
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setVerificationDismissed(true)}
+                  data-testid="button-dismiss-verification"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-1">
+            <h1 className="text-2xl md:text-3xl font-bold mb-1">
               Welcome back, {user.firstName || "there"}
             </h1>
             <p className="text-muted-foreground">
@@ -262,7 +322,7 @@ export default function Dashboard() {
                         <Badge variant="secondary">{stat.value}</Badge>
                       )}
                     </div>
-                    <p className="text-2xl font-bold">{stat.value}</p>
+                    <p className="text-xl md:text-2xl font-bold">{stat.value}</p>
                     <p className="text-sm text-muted-foreground">{stat.label}</p>
                   </CardContent>
                 </Card>
@@ -270,7 +330,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid lg:grid-cols-2 gap-6 md:gap-8">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Your Upcoming Events</h2>
@@ -471,6 +531,13 @@ export default function Dashboard() {
         onOpenChange={setEventDialogOpen}
         isAuthenticated={!!user}
       />
+
+      {showTour && user && (
+        <OnboardingTour
+          role={user.role as "mentor" | "mentee"}
+          onComplete={handleTourComplete}
+        />
+      )}
     </div>
   );
 }

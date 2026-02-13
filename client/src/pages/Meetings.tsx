@@ -194,7 +194,7 @@ function AvailabilitySettings({ onClose }: { onClose: () => void }) {
             {slots.map((slot, idx) => (
               <div key={idx} className="flex items-center gap-2 flex-wrap" data-testid={`availability-slot-${idx}`}>
                 <Select value={String(slot.dayOfWeek)} onValueChange={(v) => updateSlot(idx, "dayOfWeek", parseInt(v))}>
-                  <SelectTrigger className="w-[130px]" data-testid={`select-slot-day-${idx}`}>
+                  <SelectTrigger className="w-full sm:w-[130px]" data-testid={`select-slot-day-${idx}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -204,7 +204,7 @@ function AvailabilitySettings({ onClose }: { onClose: () => void }) {
                   </SelectContent>
                 </Select>
                 <Select value={slot.startTime} onValueChange={(v) => updateSlot(idx, "startTime", v)}>
-                  <SelectTrigger className="w-[120px]" data-testid={`select-slot-start-${idx}`}>
+                  <SelectTrigger className="w-[calc(50%-1.5rem)] sm:w-[120px]" data-testid={`select-slot-start-${idx}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -215,7 +215,7 @@ function AvailabilitySettings({ onClose }: { onClose: () => void }) {
                 </Select>
                 <span className="text-sm text-muted-foreground">to</span>
                 <Select value={slot.endTime} onValueChange={(v) => updateSlot(idx, "endTime", v)}>
-                  <SelectTrigger className="w-[120px]" data-testid={`select-slot-end-${idx}`}>
+                  <SelectTrigger className="w-[calc(50%-1.5rem)] sm:w-[120px]" data-testid={`select-slot-end-${idx}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -475,11 +475,11 @@ export default function Meetings() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header isAuthenticated={true} user={user} role={user.role} />
 
-      <main className="flex-1 py-8 px-6">
+      <main className="flex-1 py-4 px-4 md:py-8 md:px-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
             <div>
-              <h1 className="text-3xl font-bold" data-testid="text-meetings-title">Meetings</h1>
+              <h1 className="text-2xl md:text-3xl font-bold" data-testid="text-meetings-title">Meetings</h1>
               <p className="text-muted-foreground">Schedule and manage 1-on-1 sessions</p>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -763,7 +763,7 @@ export default function Meetings() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Duration</Label>
                 <Select value={formData.durationMinutes} onValueChange={(v) => setFormData(p => ({ ...p, durationMinutes: v, scheduledTime: "" }))}>

@@ -28,6 +28,9 @@ import Welcome from "@/pages/Welcome";
 import Onboarding from "@/pages/Onboarding";
 import MeetingsPage from "@/pages/Meetings";
 import AnalyticsPage from "@/pages/Analytics";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import VerifyEmail from "@/pages/VerifyEmail";
 
 function Router() {
   return (
@@ -55,6 +58,9 @@ function Router() {
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/meetings" component={MeetingsPage} />
       <Route path="/analytics" component={AnalyticsPage} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/verify-email" component={VerifyEmail} />
       <Route component={NotFound} />
     </Switch>
   );

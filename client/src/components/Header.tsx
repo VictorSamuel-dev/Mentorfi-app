@@ -192,11 +192,11 @@ export function Header({ isAuthenticated = false, user, notificationCount = 0, r
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Button variant="outline" asChild data-testid="button-sign-in">
+                <Button variant="outline" asChild data-testid="button-sign-in" className="hidden sm:inline-flex">
                   <Link href="/login">Welcome back</Link>
                 </Button>
                 <Button asChild data-testid="button-create-account">
-                  <Link href="/signup">Create an account</Link>
+                  <Link href="/signup"><span className="sm:hidden">Sign up</span><span className="hidden sm:inline">Create an account</span></Link>
                 </Button>
               </div>
             )}

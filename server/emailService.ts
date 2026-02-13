@@ -243,6 +243,39 @@ export const emailService = {
     return sendEmail(to, subject, html);
   },
 
+  async sendPasswordResetEmail(to: string, firstName: string, resetUrl: string): Promise<boolean> {
+    const subject = `Reset your ${APP_NAME} password`;
+    const html = wrapInTemplate(`
+      <h2 style="color: #111827; margin: 0 0 16px;">Password Reset Request</h2>
+      <p style="color: #4b5563; line-height: 1.6; margin: 0 0 16px;">
+        Hi ${firstName}, we received a request to reset your password on ${APP_NAME}.
+      </p>
+      <p style="color: #4b5563; line-height: 1.6; margin: 0 0 16px;">
+        Click the button below to set a new password. This link expires in 1 hour.
+      </p>
+      ${actionButton('Reset Password', resetUrl)}
+      <p style="color: #9ca3af; font-size: 13px; line-height: 1.6; margin: 16px 0 0;">
+        If you didn't request this, you can safely ignore this email. Your password will remain unchanged.
+      </p>
+    `);
+    return sendEmail(to, subject, html);
+  },
+
+  async sendEmailVerificationEmail(to: string, firstName: string, verifyUrl: string): Promise<boolean> {
+    const subject = `Verify your ${APP_NAME} email address`;
+    const html = wrapInTemplate(`
+      <h2 style="color: #111827; margin: 0 0 16px;">Verify Your Email</h2>
+      <p style="color: #4b5563; line-height: 1.6; margin: 0 0 16px;">
+        Hi ${firstName}, thanks for signing up for ${APP_NAME}! Please verify your email address to unlock all features.
+      </p>
+      ${actionButton('Verify Email', verifyUrl)}
+      <p style="color: #9ca3af; font-size: 13px; line-height: 1.6; margin: 16px 0 0;">
+        This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.
+      </p>
+    `);
+    return sendEmail(to, subject, html);
+  },
+
   async sendReviewReceivedEmail(to: string, mentorName: string, reviewerName: string, rating: number): Promise<boolean> {
     const subject = `${reviewerName} left you a review`;
     const html = wrapInTemplate(`

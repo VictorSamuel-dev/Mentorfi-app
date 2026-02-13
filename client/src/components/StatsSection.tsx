@@ -27,7 +27,7 @@ export function StatsSection() {
               className="text-center"
               data-testid={`stat-${index}`}
             >
-              <div className="text-4xl sm:text-5xl font-bold mb-2">{stat.value}</div>
+              <div className="text-3xl sm:text-4xl md:text-5xl font-bold mb-2">{stat.value}</div>
               <div className="text-primary-foreground/80 font-medium">{stat.label}</div>
             </div>
           ))}

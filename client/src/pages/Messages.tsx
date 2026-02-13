@@ -108,10 +108,10 @@ export default function Messages() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header isAuthenticated={true} user={user} notificationCount={0} role={user.role} />
       
-      <main className="flex-1 py-8 px-6">
+      <main className="flex-1 py-4 px-4 md:py-8 md:px-6">
         <div className="max-w-5xl mx-auto">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-1">Messages</h1>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1">Messages</h1>
             <p className="text-muted-foreground">
               Chat with your approved mentor connections
             </p>
@@ -120,7 +120,7 @@ export default function Messages() {
           {isLoading ? (
             <Skeleton className="h-[600px]" />
           ) : (
-            <Card className="h-[600px] flex overflow-hidden">
+            <Card className="h-[calc(100vh-220px)] md:h-[600px] flex overflow-hidden">
               {/* Conversation List */}
               <div
                 className={`w-full md:w-80 border-r flex flex-col ${

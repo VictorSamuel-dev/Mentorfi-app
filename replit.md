@@ -17,6 +17,11 @@ Key features include:
 - Mentor reviews and ratings (5-star system, one review per connection, shown after 3+ messages)
 - Meeting scheduler (video call, phone, in-person formats with status tracking)
 - Mentor analytics dashboard (profile views, connections, messages, meetings, ratings, 7-day activity chart)
+- Password reset flow via email (SendGrid)
+- Email verification on signup with resend option on Dashboard
+- Data export (meetings and messages as CSV) from Settings page
+- Mobile-responsive design across all pages
+- First-time user onboarding tour (role-specific, stored in localStorage)
 - AI-Powered Features (via OpenAI through Replit AI Integrations):
   - Conversation Starters: AI-generated icebreakers shown in Messages when conversation has 0 messages
   - Meeting Prep Summaries: AI prep brief (overview, highlights, topics, questions) on Meetings page via "AI Prep" button

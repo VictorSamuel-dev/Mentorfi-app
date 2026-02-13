@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { randomBytes } from "crypto";
 import { storage } from "./storage";
 import { insertEventSchema, insertConnectionSchema, insertMessageSchema } from "@shared/schema";
 import { comparePasswords, hashPassword } from "./utils/password";
@@ -123,6 +124,21 @@ export async function registerRoutes(
           user.firstName || "there",
           user.role || "mentee"
         ).catch(() => {});
+
+        const verifyToken = randomBytes(32).toString("hex");
+        const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await storage.updateUser(user.id, {
+          emailVerificationToken: verifyToken,
+          emailVerificationExpires: verifyExpires,
+        } as any);
+        const host = req.headers.host || "localhost:5000";
+        const protocol = req.headers["x-forwarded-proto"] || "http";
+        const verifyUrl = `${protocol}://${host}/verify-email?token=${verifyToken}`;
+        emailService.sendEmailVerificationEmail(
+          user.email,
+          user.firstName || "there",
+          verifyUrl
+        ).catch(() => {});
       }
 
       res.json({ user: profile });
@@ -166,6 +182,136 @@ export async function registerRoutes(
       }
       res.json({ success: true });
     });
+  });
+
+  // Password reset - request
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ error: "Email is required" });
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.json({ success: true });
+      }
+
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await storage.createPasswordResetToken(user.id, token, expiresAt);
+
+      const host = req.headers.host || "localhost:5000";
+      const protocol = req.headers["x-forwarded-proto"] || "http";
+      const resetUrl = `${protocol}://${host}/reset-password?token=${token}`;
+
+      emailService.sendPasswordResetEmail(
+        user.email,
+        user.firstName || "there",
+        resetUrl
+      ).catch(() => {});
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ error: "Something went wrong" });
+    }
+  });
+
+  // Password reset - verify token
+  app.get("/api/auth/reset-password/:token", async (req, res) => {
+    try {
+      const resetToken = await storage.getPasswordResetToken(req.params.token);
+      if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
+        return res.status(400).json({ error: "Invalid or expired reset link" });
+      }
+      res.json({ valid: true });
+    } catch (error) {
+      res.status(500).json({ error: "Something went wrong" });
+    }
+  });
+
+  // Password reset - set new password
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword) return res.status(400).json({ error: "Token and new password are required" });
+      if (newPassword.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
+
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
+        return res.status(400).json({ error: "Invalid or expired reset link" });
+      }
+
+      const hashed = await hashPassword(newPassword);
+      await storage.updateUserPassword(resetToken.userId, hashed);
+      await storage.markPasswordResetTokenUsed(resetToken.id);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ error: "Something went wrong" });
+    }
+  });
+
+  // Email verification - send verification email
+  const verifyRateLimit = new Map<string, number>();
+  app.post("/api/auth/send-verification", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const lastSent = verifyRateLimit.get(userId) || 0;
+      if (Date.now() - lastSent < 60000) {
+        return res.status(429).json({ error: "Please wait before requesting another verification email" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      if (user.emailVerified) return res.json({ success: true, alreadyVerified: true });
+
+      verifyRateLimit.set(userId, Date.now());
+
+      const token = randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      await storage.updateUser(user.id, {
+        emailVerificationToken: token,
+        emailVerificationExpires: expires,
+      } as any);
+
+      const host = req.headers.host || "localhost:5000";
+      const protocol = req.headers["x-forwarded-proto"] || "http";
+      const verifyUrl = `${protocol}://${host}/verify-email?token=${token}`;
+
+      emailService.sendEmailVerificationEmail(
+        user.email,
+        user.firstName || "there",
+        verifyUrl
+      ).catch(() => {});
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Send verification error:", error);
+      res.status(500).json({ error: "Something went wrong" });
+    }
+  });
+
+  // Email verification - verify token
+  app.get("/api/auth/verify-email/:token", async (req, res) => {
+    try {
+      const user = await storage.getUserByEmailVerificationToken(req.params.token);
+      if (!user) return res.status(400).json({ error: "Invalid verification link" });
+      if (user.emailVerificationExpires && user.emailVerificationExpires < new Date()) {
+        return res.status(400).json({ error: "Verification link has expired" });
+      }
+
+      await storage.updateUser(user.id, {
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
+      } as any);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Verify email error:", error);
+      res.status(500).json({ error: "Something went wrong" });
+    }
   });
 
   app.post("/api/auth/change-email", requireAuth, async (req, res) => {
@@ -1847,6 +1993,69 @@ export async function registerRoutes(
     } catch (error) {
       console.error("AI match score error:", error);
       res.status(500).json({ error: "Failed to score match" });
+    }
+  });
+
+  // ── Data Export ──────────────────────────────────────────
+  function sanitizeCsvField(value: string): string {
+    let clean = value.replace(/"/g, '""');
+    if (/^[=+\-@\t\r]/.test(clean)) {
+      clean = "'" + clean;
+    }
+    return `"${clean}"`;
+  }
+
+  app.get("/api/export/meetings", requireAuth, async (req, res) => {
+    try {
+      const meetingsData = await storage.getMeetingsForUser(req.session.userId!);
+      const csv = [
+        "Title,Date,Duration (min),Format,Status,With,Notes",
+        ...meetingsData.map(m => {
+          const name = [m.otherUser.firstName, m.otherUser.lastName].filter(Boolean).join(" ") || "Unknown";
+          const date = m.scheduledAt ? new Date(m.scheduledAt).toISOString() : "";
+          return `${sanitizeCsvField(m.title)},${sanitizeCsvField(date)},${m.durationMinutes},${sanitizeCsvField(m.format)},${sanitizeCsvField(m.status)},${sanitizeCsvField(name)},${sanitizeCsvField(m.notes || "")}`;
+        }),
+      ].join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=mentorfy-meetings.csv");
+      res.send(csv);
+    } catch (error) {
+      console.error("Export meetings error:", error);
+      res.status(500).json({ error: "Export failed" });
+    }
+  });
+
+  app.get("/api/export/messages", requireAuth, async (req, res) => {
+    try {
+      const connData = await storage.getApprovedConnectionsForUser(req.session.userId!);
+      const allMessages: { connection: string; sender: string; content: string; date: string }[] = [];
+      for (const conn of connData) {
+        const otherUserId = conn.fromUserId === req.session.userId! ? conn.toUserId : conn.fromUserId;
+        const otherUser = await storage.getUserProfile(otherUserId);
+        const connLabel = otherUser ? [otherUser.firstName, otherUser.lastName].filter(Boolean).join(" ") : "Unknown";
+        const msgs = await storage.getMessagesByConnection(conn.id);
+        for (const msg of msgs) {
+          const senderUser = msg.senderId === req.session.userId! ? "You" : connLabel;
+          allMessages.push({
+            connection: connLabel,
+            sender: senderUser,
+            content: msg.content,
+            date: msg.createdAt ? new Date(msg.createdAt).toISOString() : "",
+          });
+        }
+      }
+      const csv = [
+        "Connection,Sender,Message,Date",
+        ...allMessages.map(m =>
+          `${sanitizeCsvField(m.connection)},${sanitizeCsvField(m.sender)},${sanitizeCsvField(m.content)},${sanitizeCsvField(m.date)}`
+        ),
+      ].join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=mentorfy-messages.csv");
+      res.send(csv);
+    } catch (error) {
+      console.error("Export messages error:", error);
+      res.status(500).json({ error: "Export failed" });
     }
   });
 

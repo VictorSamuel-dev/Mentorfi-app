@@ -106,11 +106,11 @@ export default function Events() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header isAuthenticated={!!user} user={user} notificationCount={0} role={user?.role} />
       
-      <main className="flex-1 py-8 px-6">
+      <main className="flex-1 py-4 px-4 md:py-8 md:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
+          <div className="flex items-center justify-between gap-4 mb-6 md:mb-8 flex-wrap">
             <div>
-              <h1 className="text-3xl font-bold mb-1">Career Events</h1>
+              <h1 className="text-2xl md:text-3xl font-bold mb-1">Career Events</h1>
               <p className="text-muted-foreground">
                 Find events and connect with mentors who share your interests
               </p>

@@ -54,6 +54,8 @@ import {
   type InsertAvailabilitySlot,
   type BlockedDate,
   type InsertBlockedDate,
+  type PasswordResetToken,
+  passwordResetTokens,
 } from "@shared/schema";
 import { hashPassword, comparePasswords } from "./utils/password";
 
@@ -166,6 +168,14 @@ export interface IStorage {
   createBlockedDate(blockedDate: InsertBlockedDate): Promise<BlockedDate>;
   deleteBlockedDate(id: number, mentorId: string): Promise<void>;
   getMentorAvailability(mentorId: string): Promise<{ slots: AvailabilitySlot[]; blockedDates: BlockedDate[] }>;
+
+  // Password reset operations
+  createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenUsed(id: number): Promise<void>;
+
+  // Email verification
+  getUserByEmailVerificationToken(token: string): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1405,6 +1415,25 @@ export class DatabaseStorage implements IStorage {
       this.getBlockedDates(mentorId),
     ]);
     return { slots, blockedDates };
+  }
+
+  async createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<PasswordResetToken> {
+    const result = await db.insert(passwordResetTokens).values({ userId, token, expiresAt }).returning();
+    return result[0];
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const result = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token));
+    return result[0];
+  }
+
+  async markPasswordResetTokenUsed(id: number): Promise<void> {
+    await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, id));
+  }
+
+  async getUserByEmailVerificationToken(token: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.emailVerificationToken, token));
+    return result[0];
   }
 }
 

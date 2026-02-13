@@ -17,6 +17,9 @@ export const users = pgTable("users", {
   targetCompanies: text("target_companies").array(),
   profileImageUrl: text("profile_image_url"),
   isVerified: boolean("is_verified").default(false),
+  emailVerified: boolean("email_verified").default(false),
+  emailVerificationToken: text("email_verification_token"),
+  emailVerificationExpires: timestamp("email_verification_expires"),
   isPremium: boolean("is_premium").default(false),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
@@ -71,6 +74,9 @@ export const insertUserSchema = createInsertSchema(users).pick({
   workEmailVerified: true,
   workEmailVerificationCode: true,
   workEmailVerificationExpires: true,
+  emailVerified: true,
+  emailVerificationToken: true,
+  emailVerificationExpires: true,
 });
 
 // Available mentee goal options for matching
@@ -372,6 +378,18 @@ export const insertBlockedDateSchema = createInsertSchema(mentorBlockedDates).om
 
 export type InsertBlockedDate = z.infer<typeof insertBlockedDateSchema>;
 export type BlockedDate = typeof mentorBlockedDates.$inferSelect;
+
+// Password reset tokens
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 
 // Analytics events table - tracks user activity
 export const analyticsEvents = pgTable("analytics_events", {

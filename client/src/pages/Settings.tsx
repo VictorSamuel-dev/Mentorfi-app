@@ -12,7 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Loader2, Lock, User, Shield, Mail } from "lucide-react";
+import { Loader2, Lock, User, Shield, Mail, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { queryClient } from "@/lib/queryClient";
@@ -347,6 +347,36 @@ export default function Settings() {
                   Your data is protected and only shared with mentors you connect with. 
                   Review our <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a> for more details.
                 </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Download className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle>Export Your Data</CardTitle>
+                </div>
+                <CardDescription>Download your data as CSV files</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => { window.location.href = "/api/export/meetings"; }}
+                    data-testid="button-export-meetings"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export Meetings
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => { window.location.href = "/api/export/messages"; }}
+                    data-testid="button-export-messages"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export Messages
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
