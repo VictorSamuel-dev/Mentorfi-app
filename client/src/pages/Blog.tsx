@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Clock, User } from "lucide-react";
 
-import blogArtisStevens from "@/assets/images/blog-artis-stevens.png";
+import blogArtisStevens from "@assets/image_1770958516991.png";
 import blogCareerFair from "@/assets/images/blog-career-fair.png";
 import blogIndustryMentorship from "@/assets/images/blog-industry-mentorship.png";
 import blogNetworkingIntroverts from "@/assets/images/blog-networking-introverts.png";
