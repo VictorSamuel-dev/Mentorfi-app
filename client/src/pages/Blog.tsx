@@ -131,7 +131,7 @@ Platforms like Mentorfy are designed specifically to facilitate these connection
     title: "Networking Strategies for Introverts",
     description: "Practical approaches to building professional relationships without the overwhelm.",
     category: "Networking",
-    date: "Dec 28, 2025",
+    date: "Jan 2, 2026",
     author: "Mentorfy Editorial",
     readTime: "4 min read",
     content: `Networking does not have to mean working a room full of strangers with a stack of business cards. For introverts, the traditional networking playbook can feel exhausting and inauthentic. The good news is that some of the most effective networking strategies are perfectly suited to introverted strengths.
