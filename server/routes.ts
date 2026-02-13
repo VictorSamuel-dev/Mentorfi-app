@@ -1410,6 +1410,38 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Not authorized" });
       }
 
+      const fromUser = await storage.getUser(connection.fromUserId);
+      const toUser = await storage.getUser(connection.toUserId);
+      const mentorId = fromUser?.role === "mentor" ? connection.fromUserId : connection.toUserId;
+      const { slots, blockedDates } = await storage.getMentorAvailability(mentorId);
+
+      const meetingDate = new Date(scheduledAt);
+      const dateStr = meetingDate.toISOString().split("T")[0];
+
+      const isBlocked = blockedDates.some(bd => bd.blockedDate === dateStr);
+      if (isBlocked) {
+        return res.status(400).json({ error: "The mentor is unavailable on this date" });
+      }
+
+      if (slots.length > 0) {
+        const dayOfWeek = meetingDate.getDay();
+        const meetingStartMinutes = meetingDate.getHours() * 60 + meetingDate.getMinutes();
+        const meetingEndMinutes = meetingStartMinutes + (durationMinutes || 30);
+
+        const matchingSlot = slots.find(slot => {
+          if (slot.dayOfWeek !== dayOfWeek) return false;
+          const [startH, startM] = slot.startTime.split(":").map(Number);
+          const [endH, endM] = slot.endTime.split(":").map(Number);
+          const slotStart = startH * 60 + startM;
+          const slotEnd = endH * 60 + endM;
+          return meetingStartMinutes >= slotStart && meetingEndMinutes <= slotEnd;
+        });
+
+        if (!matchingSlot) {
+          return res.status(400).json({ error: "The selected time is outside the mentor's available hours" });
+        }
+      }
+
       const meeting = await storage.createMeeting({
         connectionId,
         schedulerId,
@@ -1512,6 +1544,101 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Update meeting status error:", error);
       res.status(500).json({ error: "Failed to update meeting" });
+    }
+  });
+
+  // =====================
+  // AVAILABILITY ROUTES
+  // =====================
+
+  app.get("/api/availability", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "mentor") {
+        return res.status(403).json({ error: "Mentor access required" });
+      }
+      const availability = await storage.getMentorAvailability(req.session.userId!);
+      res.json(availability);
+    } catch (error) {
+      console.error("Get availability error:", error);
+      res.status(500).json({ error: "Failed to fetch availability" });
+    }
+  });
+
+  app.put("/api/availability/slots", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "mentor") {
+        return res.status(403).json({ error: "Mentor access required" });
+      }
+      const { slots } = req.body;
+      if (!Array.isArray(slots)) {
+        return res.status(400).json({ error: "slots must be an array" });
+      }
+      for (const slot of slots) {
+        if (typeof slot.dayOfWeek !== "number" || slot.dayOfWeek < 0 || slot.dayOfWeek > 6) {
+          return res.status(400).json({ error: "dayOfWeek must be 0-6" });
+        }
+        if (!slot.startTime || !slot.endTime) {
+          return res.status(400).json({ error: "startTime and endTime are required" });
+        }
+        const [sH, sM] = slot.startTime.split(":").map(Number);
+        const [eH, eM] = slot.endTime.split(":").map(Number);
+        if (sH * 60 + sM >= eH * 60 + eM) {
+          return res.status(400).json({ error: "End time must be after start time" });
+        }
+      }
+      const result = await storage.replaceAvailabilitySlots(req.session.userId!, slots);
+      res.json(result);
+    } catch (error) {
+      console.error("Update availability slots error:", error);
+      res.status(500).json({ error: "Failed to update availability" });
+    }
+  });
+
+  app.post("/api/availability/blocked-dates", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "mentor") {
+        return res.status(403).json({ error: "Mentor access required" });
+      }
+      const { blockedDate, reason } = req.body;
+      if (!blockedDate) {
+        return res.status(400).json({ error: "blockedDate is required" });
+      }
+      const result = await storage.createBlockedDate({
+        mentorId: req.session.userId!,
+        blockedDate,
+        reason: reason || null,
+      });
+      res.json(result);
+    } catch (error) {
+      console.error("Create blocked date error:", error);
+      res.status(500).json({ error: "Failed to create blocked date" });
+    }
+  });
+
+  app.delete("/api/availability/blocked-dates/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "mentor") {
+        return res.status(403).json({ error: "Mentor access required" });
+      }
+      await storage.deleteBlockedDate(parseInt(req.params.id), req.session.userId!);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete blocked date error:", error);
+      res.status(500).json({ error: "Failed to delete blocked date" });
+    }
+  });
+
+  app.get("/api/mentors/:mentorId/availability", requireAuth, async (req, res) => {
+    try {
+      const availability = await storage.getMentorAvailability(req.params.mentorId);
+      res.json(availability);
+    } catch (error) {
+      console.error("Get mentor availability error:", error);
+      res.status(500).json({ error: "Failed to fetch mentor availability" });
     }
   });
 

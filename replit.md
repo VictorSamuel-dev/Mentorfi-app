@@ -62,6 +62,14 @@ Preferred communication style: Simple, everyday language.
 - Event-based matching: users matched based on shared event RSVPs and interests
 - Premium upgrade unlocks unlimited messaging
 
+### Mentor Availability / Calendar Blocking
+- **Weekly Slots**: Mentors set recurring availability windows (day of week + time range)
+- **Blocked Dates**: Mentors can block specific dates (vacations, holidays)
+- **Scheduler Integration**: When a mentor has availability set, the meeting scheduler only shows available time slots; blocked dates are always enforced
+- **Server Validation**: Meeting creation validates against mentor availability and blocked dates server-side
+- **Tables**: `mentor_availability_slots` (dayOfWeek, startTime, endTime) and `mentor_blocked_dates` (blockedDate, reason)
+- **API Routes**: GET/PUT `/api/availability/slots`, POST/DELETE `/api/availability/blocked-dates`, GET `/api/mentors/:id/availability`
+
 ### Badge System
 - **Badge Types**: FOUNDING_MENTOR (gold, special tier), VERIFIED_MENTOR (blue, trust tier), EARLY_SUPPORTER (slate, community tier)
 - **Visibility Rules**: 

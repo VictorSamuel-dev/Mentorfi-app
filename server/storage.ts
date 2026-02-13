@@ -13,6 +13,8 @@ import {
   reviews,
   meetings,
   analyticsEvents,
+  mentorAvailabilitySlots,
+  mentorBlockedDates,
   type User,
   type InsertUser,
   type Event,
@@ -48,6 +50,10 @@ import {
   type ReviewWithUser,
   type MeetingWithParticipant,
   type MentorAnalytics,
+  type AvailabilitySlot,
+  type InsertAvailabilitySlot,
+  type BlockedDate,
+  type InsertBlockedDate,
 } from "@shared/schema";
 import { hashPassword, comparePasswords } from "./utils/password";
 
@@ -150,6 +156,16 @@ export interface IStorage {
   // Analytics operations
   logAnalyticsEvent(event: InsertAnalyticsEvent): Promise<void>;
   getMentorAnalytics(userId: string): Promise<MentorAnalytics>;
+
+  // Availability operations
+  getAvailabilitySlots(mentorId: string): Promise<AvailabilitySlot[]>;
+  createAvailabilitySlot(slot: InsertAvailabilitySlot): Promise<AvailabilitySlot>;
+  deleteAvailabilitySlot(id: number, mentorId: string): Promise<void>;
+  replaceAvailabilitySlots(mentorId: string, slots: Omit<InsertAvailabilitySlot, "mentorId">[]): Promise<AvailabilitySlot[]>;
+  getBlockedDates(mentorId: string): Promise<BlockedDate[]>;
+  createBlockedDate(blockedDate: InsertBlockedDate): Promise<BlockedDate>;
+  deleteBlockedDate(id: number, mentorId: string): Promise<void>;
+  getMentorAvailability(mentorId: string): Promise<{ slots: AvailabilitySlot[]; blockedDates: BlockedDate[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1347,6 +1363,48 @@ export class DatabaseStorage implements IStorage {
       totalReviews: ratingResult.count,
       recentActivity,
     };
+  }
+  // Availability operations
+  async getAvailabilitySlots(mentorId: string): Promise<AvailabilitySlot[]> {
+    return db.select().from(mentorAvailabilitySlots).where(eq(mentorAvailabilitySlots.mentorId, mentorId)).orderBy(mentorAvailabilitySlots.dayOfWeek, mentorAvailabilitySlots.startTime);
+  }
+
+  async createAvailabilitySlot(slot: InsertAvailabilitySlot): Promise<AvailabilitySlot> {
+    const result = await db.insert(mentorAvailabilitySlots).values(slot).returning();
+    return result[0];
+  }
+
+  async deleteAvailabilitySlot(id: number, mentorId: string): Promise<void> {
+    await db.delete(mentorAvailabilitySlots).where(and(eq(mentorAvailabilitySlots.id, id), eq(mentorAvailabilitySlots.mentorId, mentorId)));
+  }
+
+  async replaceAvailabilitySlots(mentorId: string, slots: Omit<InsertAvailabilitySlot, "mentorId">[]): Promise<AvailabilitySlot[]> {
+    await db.delete(mentorAvailabilitySlots).where(eq(mentorAvailabilitySlots.mentorId, mentorId));
+    if (slots.length === 0) return [];
+    const toInsert = slots.map(s => ({ ...s, mentorId }));
+    const result = await db.insert(mentorAvailabilitySlots).values(toInsert).returning();
+    return result;
+  }
+
+  async getBlockedDates(mentorId: string): Promise<BlockedDate[]> {
+    return db.select().from(mentorBlockedDates).where(eq(mentorBlockedDates.mentorId, mentorId)).orderBy(mentorBlockedDates.blockedDate);
+  }
+
+  async createBlockedDate(blockedDate: InsertBlockedDate): Promise<BlockedDate> {
+    const result = await db.insert(mentorBlockedDates).values(blockedDate).returning();
+    return result[0];
+  }
+
+  async deleteBlockedDate(id: number, mentorId: string): Promise<void> {
+    await db.delete(mentorBlockedDates).where(and(eq(mentorBlockedDates.id, id), eq(mentorBlockedDates.mentorId, mentorId)));
+  }
+
+  async getMentorAvailability(mentorId: string): Promise<{ slots: AvailabilitySlot[]; blockedDates: BlockedDate[] }> {
+    const [slots, blockedDates] = await Promise.all([
+      this.getAvailabilitySlots(mentorId),
+      this.getBlockedDates(mentorId),
+    ]);
+    return { slots, blockedDates };
   }
 }
 

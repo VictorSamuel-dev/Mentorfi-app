@@ -342,6 +342,37 @@ export const insertMeetingSchema = createInsertSchema(meetings).omit({
 export type InsertMeeting = z.infer<typeof insertMeetingSchema>;
 export type Meeting = typeof meetings.$inferSelect;
 
+// Mentor availability slots - recurring weekly windows
+export const mentorAvailabilitySlots = pgTable("mentor_availability_slots", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  mentorId: varchar("mentor_id").notNull().references(() => users.id),
+  dayOfWeek: integer("day_of_week").notNull(), // 0=Sunday, 1=Monday, ..., 6=Saturday
+  startTime: text("start_time").notNull(), // "09:00" (24h format)
+  endTime: text("end_time").notNull(), // "17:00" (24h format)
+});
+
+export const insertAvailabilitySlotSchema = createInsertSchema(mentorAvailabilitySlots).omit({
+  id: true,
+});
+
+export type InsertAvailabilitySlot = z.infer<typeof insertAvailabilitySlotSchema>;
+export type AvailabilitySlot = typeof mentorAvailabilitySlots.$inferSelect;
+
+// Mentor blocked dates - specific dates mentors are unavailable
+export const mentorBlockedDates = pgTable("mentor_blocked_dates", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  mentorId: varchar("mentor_id").notNull().references(() => users.id),
+  blockedDate: text("blocked_date").notNull(), // "2026-03-15" (ISO date string)
+  reason: text("reason"),
+});
+
+export const insertBlockedDateSchema = createInsertSchema(mentorBlockedDates).omit({
+  id: true,
+});
+
+export type InsertBlockedDate = z.infer<typeof insertBlockedDateSchema>;
+export type BlockedDate = typeof mentorBlockedDates.$inferSelect;
+
 // Analytics events table - tracks user activity
 export const analyticsEvents = pgTable("analytics_events", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
