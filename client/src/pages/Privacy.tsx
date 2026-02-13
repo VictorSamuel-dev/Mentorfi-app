@@ -9,7 +9,7 @@ export default function Privacy() {
       <main className="flex-1 py-16 px-6">
         <div className="max-w-3xl mx-auto prose dark:prose-invert">
           <h1>Privacy Policy</h1>
-          <p className="text-muted-foreground">Last updated: January 2025</p>
+          <p className="text-muted-foreground">Last updated: February 2026</p>
           
           <h2>Information We Collect</h2>
           <p>
