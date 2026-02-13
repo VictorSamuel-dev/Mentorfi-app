@@ -6,6 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Clock, User } from "lucide-react";
 
+import blogArtisStevens from "@/assets/images/blog-artis-stevens.png";
+import blogCareerFair from "@/assets/images/blog-career-fair.png";
+import blogIndustryMentorship from "@/assets/images/blog-industry-mentorship.png";
+import blogNetworkingIntroverts from "@/assets/images/blog-networking-introverts.png";
+import blogPersonalBrand from "@/assets/images/blog-personal-brand.png";
+import blogMentorQuestions from "@/assets/images/blog-mentor-questions.png";
+import blogCareerTransition from "@/assets/images/blog-career-transition.png";
+
 interface BlogPost {
   id: string;
   title: string;
@@ -14,6 +22,7 @@ interface BlogPost {
   date: string;
   author: string;
   readTime: string;
+  image: string;
   content: string;
 }
 
@@ -26,6 +35,7 @@ const posts: BlogPost[] = [
     date: "Jan 22, 2026",
     author: "Mentorfy Editorial",
     readTime: "6 min read",
+    image: blogArtisStevens,
     content: `On January 20, 2026, Artis Stevens, President and CEO of Big Brothers Big Sisters of America (BBBSA), sat down with comedian Josh Johnson on The Daily Show for a powerful conversation about the transformative role of mentorship in shaping young lives and driving society forward.
 
 Stevens, who made history as the first Black CEO in BBBSA's 120-plus year history, brought both personal passion and data-driven insights to the conversation. His message was clear: mentorship is not just a nice thing to do — it is one of the most effective investments a society can make.
@@ -57,112 +67,41 @@ For anyone considering becoming a mentor or seeking one, Stevens' appearance on 
 Whether through organizations like Big Brothers Big Sisters or platforms like Mentorfy, the call to action is simple: show up, be present, and invest in someone's future.`,
   },
   {
-    id: "how-to-make-the-most-of-your-next-career-fair",
-    title: "How to Make the Most of Your Next Career Fair",
-    description: "Tips for standing out and making meaningful connections with recruiters and mentors.",
+    id: "navigating-career-transitions-with-confidence",
+    title: "Navigating Career Transitions with Confidence",
+    description: "A practical guide to making successful career changes at any stage of your professional journey.",
     category: "Career Tips",
-    date: "Jan 10, 2026",
+    date: "Feb 10, 2026",
     author: "Mentorfy Editorial",
     readTime: "5 min read",
-    content: `Career fairs remain one of the most effective ways to make direct connections with employers and industry professionals. But simply showing up is not enough. To truly make the most of your next career fair, you need a strategy.
+    image: blogCareerTransition,
+    content: `Career transitions are becoming increasingly common. Whether you are switching industries, moving from a corporate role to a startup, or pivoting into an entirely new field, the process can feel daunting. But with the right approach, a career transition can be the best professional decision you ever make.
 
-## Do Your Research Beforehand
+## Start With Why
 
-Before the event, review the list of attending companies and identify the ones that align with your career goals. Visit their websites, understand their recent news, and prepare tailored questions. Recruiters notice when a candidate has done their homework.
+Before making any move, get clear on your motivation. Are you running away from something (burnout, toxic culture, lack of growth) or running toward something (a new passion, better alignment with your values, greater impact)? The answer matters because it shapes how you approach the transition.
 
-## Perfect Your Elevator Pitch
+## Audit Your Transferable Skills
 
-You will have roughly 30 to 60 seconds to make a first impression. Prepare a concise pitch that covers who you are, what you are studying or working on, and what kind of opportunity you are looking for. Practice it until it feels natural, not rehearsed.
+You have more relevant experience than you think. The skills you have built — communication, project management, problem-solving, leadership — transfer across industries. Make a list of your core competencies and think about how they apply to your target field.
 
-## Bring the Right Materials
+## Fill the Gaps Strategically
 
-Have printed copies of your resume on quality paper. Consider bringing a portfolio or examples of your work if relevant. Make sure your LinkedIn profile is up to date — many recruiters will look you up immediately after meeting you.
+If your target role requires specific knowledge or credentials you do not have, create a focused plan to acquire them. This might mean taking a course, earning a certification, or doing project-based work. Do not try to learn everything at once — identify the two or three most critical gaps and address those first.
 
-## Ask Meaningful Questions
+## Leverage Informational Interviews
 
-Instead of asking generic questions like "What does your company do?", try asking about team culture, growth opportunities, or specific projects the company is working on. This shows genuine interest and helps you stand out from the crowd.
+One of the most effective ways to prepare for a career transition is to talk to people who are already doing what you want to do. Informational interviews help you understand the realities of a new field, build connections, and identify opportunities that are not posted publicly.
 
-## Follow Up Within 48 Hours
+## Find a Mentor Who Has Made a Similar Transition
 
-After the fair, send personalized follow-up emails or LinkedIn messages to the people you connected with. Reference something specific from your conversation to jog their memory. This simple step puts you ahead of the majority of attendees who never follow up.
+A mentor who has navigated a career change themselves can offer invaluable guidance. They understand the emotional and practical challenges involved and can help you avoid common pitfalls. Platforms like Mentorfy can connect you with professionals who have walked a similar path.
 
-## Leverage Your Network
+## Be Patient With the Process
 
-If you have a mentor, ask them if they have any connections at the companies you are targeting. A warm introduction can open doors that a cold application cannot. Platforms like Mentorfy make it easy to find mentors who have experience at your target companies.
+Career transitions rarely happen overnight. There is usually an awkward middle period where you feel like you are between identities. This is normal. Stay focused on your long-term vision, keep building relevant skills and connections, and trust that the pieces will come together.
 
-Career fairs are opportunities disguised as crowded convention halls. With the right preparation, you can turn a brief conversation into a career-defining connection.`,
-  },
-  {
-    id: "the-power-of-industry-mentorship",
-    title: "The Power of Industry Mentorship",
-    description: "Why having a mentor in your target industry can accelerate your career growth.",
-    category: "Mentorship",
-    date: "Jan 5, 2026",
-    author: "Mentorfy Editorial",
-    readTime: "5 min read",
-    content: `There is a reason that nearly every successful professional can point to a mentor who helped shape their career. Industry mentorship — having a guide who understands the specific landscape you are trying to navigate — is one of the most powerful accelerators for career growth.
-
-## Why Industry-Specific Mentors Matter
-
-A general mentor can offer life advice and encouragement, but an industry mentor brings something additional: context. They understand the unwritten rules, the hiring patterns, the skills that actually matter versus the ones that just look good on paper.
-
-When you are trying to break into finance, for example, a mentor who has spent years at an investment bank can tell you which certifications actually carry weight, which networking events matter, and what interviewers are really looking for.
-
-## The Shortcut to Institutional Knowledge
-
-Every industry has institutional knowledge — the kind that is never written down but everyone seems to know. This includes understanding the real career progression path (not the one on the company website), knowing which teams are growing, and recognizing the skills that will be in demand two years from now.
-
-A mentor with industry experience gives you access to this knowledge years before you would acquire it on your own.
-
-## Building Confidence Through Validation
-
-One of the underappreciated benefits of mentorship is validation. When someone who has walked the path you want to walk tells you that you are on the right track, it builds confidence in a way that no online course or self-help book can match.
-
-This is especially important for people from underrepresented backgrounds who may not have access to informal networks that provide this kind of reassurance naturally.
-
-## How to Find the Right Industry Mentor
-
-Start by identifying professionals whose career paths align with where you want to be in five to ten years. Look for people who are generous with their time and genuinely interested in helping others grow.
-
-Platforms like Mentorfy are designed specifically to facilitate these connections, matching you with mentors based on shared industries, interests, and career goals. The right mentor can compress years of trial and error into months of focused growth.`,
-  },
-  {
-    id: "networking-strategies-for-introverts",
-    title: "Networking Strategies for Introverts",
-    description: "Practical approaches to building professional relationships without the overwhelm.",
-    category: "Networking",
-    date: "Jan 2, 2026",
-    author: "Mentorfy Editorial",
-    readTime: "4 min read",
-    content: `Networking does not have to mean working a room full of strangers with a stack of business cards. For introverts, the traditional networking playbook can feel exhausting and inauthentic. The good news is that some of the most effective networking strategies are perfectly suited to introverted strengths.
-
-## Quality Over Quantity
-
-Introverts tend to prefer deep, meaningful conversations over surface-level small talk. This is actually an advantage. Building a few strong professional relationships is far more valuable than collecting hundreds of LinkedIn connections you will never speak to again.
-
-Focus on having two or three genuine conversations at any event rather than trying to meet everyone in the room.
-
-## Leverage Written Communication
-
-Many introverts express themselves more effectively in writing than in spontaneous conversation. Use this to your advantage. Send thoughtful follow-up emails after meetings. Write LinkedIn posts sharing your professional insights. Engage with others' content by leaving substantive comments.
-
-## Prepare Conversation Starters
-
-One of the most stressful parts of networking for introverts is the unpredictability. Reduce this by preparing a few go-to conversation starters and questions. Having these ready gives you a safety net when your mind goes blank.
-
-## Use One-on-One Meetings
-
-Large networking events can be overwhelming. Instead, suggest coffee chats or virtual one-on-one meetings with people you want to connect with. These smaller settings play to introverted strengths and allow for more meaningful exchanges.
-
-## Find Structured Networking Opportunities
-
-Mentorship platforms like Mentorfy provide structured ways to build professional connections. Instead of navigating chaotic networking events, you can be matched with professionals who share your interests and goals, making the process more intentional and less draining.
-
-## Recharge Strategically
-
-If you do attend large events, give yourself permission to step outside, take breaks, and leave when your energy runs out. You will make better impressions in the first hour when you are engaged than in the third hour when you are running on empty.
-
-Networking as an introvert is not about becoming someone you are not. It is about finding approaches that work with your natural strengths.`,
+The most successful career changers are not the ones with the most impressive resumes. They are the ones who are willing to do the work of self-reflection, skill-building, and relationship-building that makes a transition sustainable.`,
   },
   {
     id: "building-your-personal-brand-in-2026",
@@ -172,6 +111,7 @@ Networking as an introvert is not about becoming someone you are not. It is abou
     date: "Feb 3, 2026",
     author: "Mentorfy Editorial",
     readTime: "5 min read",
+    image: blogPersonalBrand,
     content: `Your personal brand is not a logo or a tagline. It is the professional reputation that precedes you — what people say about you when you are not in the room. In 2026, building an intentional personal brand has never been more important.
 
 ## Define What You Stand For
@@ -208,6 +148,7 @@ Building a personal brand is a long-term investment. Start with clarity about wh
     date: "Jan 28, 2026",
     author: "Mentorfy Editorial",
     readTime: "4 min read",
+    image: blogMentorQuestions,
     content: `Your first meeting with a new mentor can feel high-stakes. You want to make a good impression, but you also want to get real value from the conversation. The best way to do both is to come prepared with thoughtful questions.
 
 Here are five questions that will help you start your mentorship relationship on the right foot.
@@ -239,40 +180,115 @@ After your first meeting, send a brief thank-you message that references somethi
 Remember, mentorship is a two-way relationship. While your mentor brings experience and perspective, you bring fresh energy and new ideas. The best mentorship conversations feel like genuine exchanges, not one-sided lectures.`,
   },
   {
-    id: "navigating-career-transitions-with-confidence",
-    title: "Navigating Career Transitions with Confidence",
-    description: "A practical guide to making successful career changes at any stage of your professional journey.",
+    id: "how-to-make-the-most-of-your-next-career-fair",
+    title: "How to Make the Most of Your Next Career Fair",
+    description: "Tips for standing out and making meaningful connections with recruiters and mentors.",
     category: "Career Tips",
-    date: "Feb 10, 2026",
+    date: "Jan 10, 2026",
     author: "Mentorfy Editorial",
     readTime: "5 min read",
-    content: `Career transitions are becoming increasingly common. Whether you are switching industries, moving from a corporate role to a startup, or pivoting into an entirely new field, the process can feel daunting. But with the right approach, a career transition can be the best professional decision you ever make.
+    image: blogCareerFair,
+    content: `Career fairs remain one of the most effective ways to make direct connections with employers and industry professionals. But simply showing up is not enough. To truly make the most of your next career fair, you need a strategy.
 
-## Start With Why
+## Do Your Research Beforehand
 
-Before making any move, get clear on your motivation. Are you running away from something (burnout, toxic culture, lack of growth) or running toward something (a new passion, better alignment with your values, greater impact)? The answer matters because it shapes how you approach the transition.
+Before the event, review the list of attending companies and identify the ones that align with your career goals. Visit their websites, understand their recent news, and prepare tailored questions. Recruiters notice when a candidate has done their homework.
 
-## Audit Your Transferable Skills
+## Perfect Your Elevator Pitch
 
-You have more relevant experience than you think. The skills you have built — communication, project management, problem-solving, leadership — transfer across industries. Make a list of your core competencies and think about how they apply to your target field.
+You will have roughly 30 to 60 seconds to make a first impression. Prepare a concise pitch that covers who you are, what you are studying or working on, and what kind of opportunity you are looking for. Practice it until it feels natural, not rehearsed.
 
-## Fill the Gaps Strategically
+## Bring the Right Materials
 
-If your target role requires specific knowledge or credentials you do not have, create a focused plan to acquire them. This might mean taking a course, earning a certification, or doing project-based work. Do not try to learn everything at once — identify the two or three most critical gaps and address those first.
+Have printed copies of your resume on quality paper. Consider bringing a portfolio or examples of your work if relevant. Make sure your LinkedIn profile is up to date — many recruiters will look you up immediately after meeting you.
 
-## Leverage Informational Interviews
+## Ask Meaningful Questions
 
-One of the most effective ways to prepare for a career transition is to talk to people who are already doing what you want to do. Informational interviews help you understand the realities of a new field, build connections, and identify opportunities that are not posted publicly.
+Instead of asking generic questions like "What does your company do?", try asking about team culture, growth opportunities, or specific projects the company is working on. This shows genuine interest and helps you stand out from the crowd.
 
-## Find a Mentor Who Has Made a Similar Transition
+## Follow Up Within 48 Hours
 
-A mentor who has navigated a career change themselves can offer invaluable guidance. They understand the emotional and practical challenges involved and can help you avoid common pitfalls. Platforms like Mentorfy can connect you with professionals who have walked a similar path.
+After the fair, send personalized follow-up emails or LinkedIn messages to the people you connected with. Reference something specific from your conversation to jog their memory. This simple step puts you ahead of the majority of attendees who never follow up.
 
-## Be Patient With the Process
+## Leverage Your Network
 
-Career transitions rarely happen overnight. There is usually an awkward middle period where you feel like you are between identities. This is normal. Stay focused on your long-term vision, keep building relevant skills and connections, and trust that the pieces will come together.
+If you have a mentor, ask them if they have any connections at the companies you are targeting. A warm introduction can open doors that a cold application cannot. Platforms like Mentorfy make it easy to find mentors who have experience at your target companies.
 
-The most successful career changers are not the ones with the most impressive resumes. They are the ones who are willing to do the work of self-reflection, skill-building, and relationship-building that makes a transition sustainable.`,
+Career fairs are opportunities disguised as crowded convention halls. With the right preparation, you can turn a brief conversation into a career-defining connection.`,
+  },
+  {
+    id: "the-power-of-industry-mentorship",
+    title: "The Power of Industry Mentorship",
+    description: "Why having a mentor in your target industry can accelerate your career growth.",
+    category: "Mentorship",
+    date: "Jan 5, 2026",
+    author: "Mentorfy Editorial",
+    readTime: "5 min read",
+    image: blogIndustryMentorship,
+    content: `There is a reason that nearly every successful professional can point to a mentor who helped shape their career. Industry mentorship — having a guide who understands the specific landscape you are trying to navigate — is one of the most powerful accelerators for career growth.
+
+## Why Industry-Specific Mentors Matter
+
+A general mentor can offer life advice and encouragement, but an industry mentor brings something additional: context. They understand the unwritten rules, the hiring patterns, the skills that actually matter versus the ones that just look good on paper.
+
+When you are trying to break into finance, for example, a mentor who has spent years at an investment bank can tell you which certifications actually carry weight, which networking events matter, and what interviewers are really looking for.
+
+## The Shortcut to Institutional Knowledge
+
+Every industry has institutional knowledge — the kind that is never written down but everyone seems to know. This includes understanding the real career progression path (not the one on the company website), knowing which teams are growing, and recognizing the skills that will be in demand two years from now.
+
+A mentor with industry experience gives you access to this knowledge years before you would acquire it on your own.
+
+## Building Confidence Through Validation
+
+One of the underappreciated benefits of mentorship is validation. When someone who has walked the path you want to walk tells you that you are on the right track, it builds confidence in a way that no online course or self-help book can match.
+
+This is especially important for people from underrepresented backgrounds who may not have access to informal networks that provide this kind of reassurance naturally.
+
+## How to Find the Right Industry Mentor
+
+Start by identifying professionals whose career paths align with where you want to be in five to ten years. Look for people who are generous with their time and genuinely interested in helping others grow.
+
+Platforms like Mentorfy are designed specifically to facilitate these connections, matching you with mentors based on shared industries, interests, and career goals. The right mentor can compress years of trial and error into months of focused growth.`,
+  },
+  {
+    id: "networking-strategies-for-introverts",
+    title: "Networking Strategies for Introverts",
+    description: "Practical approaches to building professional relationships without the overwhelm.",
+    category: "Networking",
+    date: "Jan 2, 2026",
+    author: "Mentorfy Editorial",
+    readTime: "4 min read",
+    image: blogNetworkingIntroverts,
+    content: `Networking does not have to mean working a room full of strangers with a stack of business cards. For introverts, the traditional networking playbook can feel exhausting and inauthentic. The good news is that some of the most effective networking strategies are perfectly suited to introverted strengths.
+
+## Quality Over Quantity
+
+Introverts tend to prefer deep, meaningful conversations over surface-level small talk. This is actually an advantage. Building a few strong professional relationships is far more valuable than collecting hundreds of LinkedIn connections you will never speak to again.
+
+Focus on having two or three genuine conversations at any event rather than trying to meet everyone in the room.
+
+## Leverage Written Communication
+
+Many introverts express themselves more effectively in writing than in spontaneous conversation. Use this to your advantage. Send thoughtful follow-up emails after meetings. Write LinkedIn posts sharing your professional insights. Engage with others' content by leaving substantive comments.
+
+## Prepare Conversation Starters
+
+One of the most stressful parts of networking for introverts is the unpredictability. Reduce this by preparing a few go-to conversation starters and questions. Having these ready gives you a safety net when your mind goes blank.
+
+## Use One-on-One Meetings
+
+Large networking events can be overwhelming. Instead, suggest coffee chats or virtual one-on-one meetings with people you want to connect with. These smaller settings play to introverted strengths and allow for more meaningful exchanges.
+
+## Find Structured Networking Opportunities
+
+Mentorship platforms like Mentorfy provide structured ways to build professional connections. Instead of navigating chaotic networking events, you can be matched with professionals who share your interests and goals, making the process more intentional and less draining.
+
+## Recharge Strategically
+
+If you do attend large events, give yourself permission to step outside, take breaks, and leave when your energy runs out. You will make better impressions in the first hour when you are engaged than in the third hour when you are running on empty.
+
+Networking as an introvert is not about becoming someone you are not. It is about finding approaches that work with your natural strengths.`,
   },
 ];
 
@@ -295,6 +311,13 @@ export default function Blog() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Blog
             </Button>
+
+            <img
+              src={selectedPost.image}
+              alt={selectedPost.title}
+              className="w-full aspect-video object-cover rounded-md mb-8"
+              data-testid="img-blog-hero"
+            />
 
             <div className="mb-6">
               <div className="flex items-center gap-2 flex-wrap mb-4">
@@ -343,22 +366,32 @@ export default function Blog() {
             {posts.map((post) => (
               <Card
                 key={post.id}
-                className="hover-elevate cursor-pointer"
+                className="hover-elevate cursor-pointer overflow-visible"
                 onClick={() => setSelectedPost(post)}
                 data-testid={`card-blog-${post.id}`}
               >
-                <CardHeader>
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <Badge variant="secondary">{post.category}</Badge>
-                    <span className="text-sm text-muted-foreground">{post.date}</span>
-                    <span className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {post.readTime}
-                    </span>
+                <div className="flex flex-col sm:flex-row">
+                  <div className="sm:w-64 sm:min-w-64 h-48 sm:h-auto">
+                    <img
+                      src={post.image}
+                      alt={post.title}
+                      className="w-full h-full object-cover rounded-t-md sm:rounded-t-none sm:rounded-l-md"
+                      data-testid={`img-blog-thumb-${post.id}`}
+                    />
                   </div>
-                  <CardTitle className="text-xl">{post.title}</CardTitle>
-                  <CardDescription>{post.description}</CardDescription>
-                </CardHeader>
+                  <CardHeader className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <Badge variant="secondary">{post.category}</Badge>
+                      <span className="text-sm text-muted-foreground">{post.date}</span>
+                      <span className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {post.readTime}
+                      </span>
+                    </div>
+                    <CardTitle className="text-xl">{post.title}</CardTitle>
+                    <CardDescription>{post.description}</CardDescription>
+                  </CardHeader>
+                </div>
               </Card>
             ))}
           </div>
